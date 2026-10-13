@@ -1,28 +1,18 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, date, decimal, boolean } from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
-  name: text("name"),
-  email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
+  name: text("name"), email: varchar("email", { length: 320 }), loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(), lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
+export const guards = mysqlTable("guards", {
+  id: int("id").autoincrement().primaryKey(), rut: varchar("rut", {length: 20}).notNull().unique(), name: varchar("name", {length: 180}).notNull(), hireDate: date("hireDate"), post: varchar("post", {length: 160}).notNull(), initialVacation: decimal("initialVacation", {precision: 6, scale: 2}).default("0").notNull(), active: boolean("active").default(true).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export const absenceTypes = mysqlTable("absence_types", { id:int("id").autoincrement().primaryKey(), code:varchar("code",{length:8}).notNull().unique(), name:varchar("name",{length:80}).notNull(), deductionFactor:decimal("deductionFactor",{precision:4,scale:2}).default("0").notNull(), color:varchar("color",{length:16}).notNull() });
+export const attendanceRecords = mysqlTable("attendance_records", { id:int("id").autoincrement().primaryKey(), guardId:int("guardId").notNull(), recordDate:date("recordDate").notNull(), absenceTypeId:int("absenceTypeId"), notes:text("notes"), registeredBy:int("registeredBy"), updatedAt:timestamp("updatedAt").defaultNow().onUpdateNow().notNull() });
 
-// TODO: Add your tables here
+export type User = typeof users.$inferSelect; export type InsertUser = typeof users.$inferInsert;
+export type Guard = typeof guards.$inferSelect; export type AbsenceType = typeof absenceTypes.$inferSelect; export type AttendanceRecord = typeof attendanceRecords.$inferSelect;

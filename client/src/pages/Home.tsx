@@ -1,25 +1,43 @@
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { Streamdown } from 'streamdown';
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { CalendarDays, Check, ChevronDown, Clock3, FileText, MapPin, Menu, Search, ShieldCheck, Sparkles, UserRound, UsersRound, X, Umbrella, Stethoscope, BriefcaseBusiness, Timer, Send, MoreHorizontal } from "lucide-react";
 
-/**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Workflow, Frontend Best Practices, Design Guide and Common Pitfalls
- */
-export default function Home() {
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
+type Status = "presente" | "vacaciones" | "licencia" | "permiso" | "compensatorio";
+type Guard = { id:number; name:string; rut:string; post:string; shift:string; avatar:string; vacation:number; used:number; statuses:Record<number, Status> };
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
-    </div>
-  );
+const STATUS: Record<Status, {label:string; short:string; color:string; bg:string; icon:any; factor:number}> = {
+  presente: { label:"Presente", short:"P", color:"#16745f", bg:"#dff5ec", icon:Check, factor:0 },
+  vacaciones: { label:"Vacaciones", short:"V", color:"#3172c6", bg:"#e3efff", icon:Umbrella, factor:1 },
+  licencia: { label:"Licencia médica", short:"L", color:"#d55454", bg:"#ffe5e3", icon:Stethoscope, factor:0 },
+  permiso: { label:"Permiso / medio día", short:"PM", color:"#c46a16", bg:"#fff0d5", icon:Timer, factor:.5 },
+  compensatorio: { label:"Compensatorio", short:"C", color:"#7552b8", bg:"#eee7ff", icon:BriefcaseBusiness, factor:0 },
+};
+
+const seed: Guard[] = [
+  {id:1,name:"Camila Rojas",rut:"18.492.201-7",post:"Torre Norte",shift:"07:00 – 19:00",avatar:"CR",vacation:15,used:4,statuses:{1:"presente",2:"presente",3:"presente",4:"presente",5:"vacaciones",6:"vacaciones",7:"presente",8:"presente",9:"permiso"}},
+  {id:2,name:"Matías Sepúlveda",rut:"17.208.446-2",post:"Bodega Central",shift:"19:00 – 07:00",avatar:"MS",vacation:12,used:8,statuses:{1:"presente",2:"licencia",3:"licencia",4:"presente",5:"presente",6:"presente",7:"presente",8:"presente",9:"presente"}},
+  {id:3,name:"Daniela Muñoz",rut:"19.827.301-4",post:"Parque Industrial",shift:"07:00 – 19:00",avatar:"DM",vacation:10,used:10,statuses:{1:"presente",2:"presente",3:"presente",4:"vacaciones",5:"vacaciones",6:"vacaciones",7:"vacaciones",8:"presente",9:"presente"}},
+  {id:4,name:"José Araya",rut:"16.741.908-9",post:"Torre Norte",shift:"07:00 – 19:00",avatar:"JA",vacation:15,used:14,statuses:{1:"presente",2:"presente",3:"permiso",4:"presente",5:"presente",6:"presente",7:"presente",8:"presente",9:"presente"}},
+  {id:5,name:"Sofía Vargas",rut:"20.104.630-1",post:"Clínica Los Robles",shift:"08:00 – 20:00",avatar:"SV",vacation:12,used:2,statuses:{1:"presente",2:"presente",3:"presente",4:"presente",5:"presente",6:"compensatorio",7:"presente",8:"presente",9:"presente"}},
+  {id:6,name:"Felipe Contreras",rut:"15.990.412-6",post:"Bodega Central",shift:"19:00 – 07:00",avatar:"FC",vacation:15,used:15,statuses:{1:"licencia",2:"presente",3:"presente",4:"presente",5:"presente",6:"presente",7:"presente",8:"presente",9:"presente"}},
+];
+const days = Array.from({length:31}, (_,i)=>i+1);
+
+function VacationBar({guard}:{guard:Guard}) { const left=guard.vacation-guard.used; const pct=Math.max(0,Math.min(100,left/guard.vacation*100)); const tone=left<=0?"danger":left<=4?"warn":"good"; return <div className="vacation"><div className="vacation-line"><span>Vacaciones restantes</span><strong className={tone}>{left} días</strong></div><div className="progress"><i style={{width:`${pct}%`}} className={tone}/></div></div> }
+
+export default function Home(){
+  const [guards,setGuards]=useState(seed); const [active,setActive]=useState<Guard|null>(null); const [cell,setCell]=useState<number|null>(null); const [query,setQuery]=useState(""); const [post,setPost]=useState("Todos los puestos"); const [view,setView]=useState<"month"|"mobile">(()=>typeof window !== "undefined" && window.innerWidth < 721 ? "mobile" : "month");
+  const filtered=useMemo(()=>guards.filter(g=>(g.name+g.rut).toLowerCase().includes(query.toLowerCase())&&(post==="Todos los puestos"||g.post===post)),[guards,query,post]);
+  const setStatus=(guardId:number,day:number,status:Status)=>{setGuards(gs=>gs.map(g=>g.id===guardId?{...g,statuses:{...g.statuses,[day]:status}}:g));setActive(null);setCell(null);toast.success("Marcación guardada",{description:`${STATUS[status].label} · día ${day} · sin recargar`})};
+  const totals=guards.reduce((a,g)=>{const today=g.statuses[9]||"presente";if(today!=="presente")a.abs++;if(today==="vacaciones")a.vac++;Object.values(g.statuses).forEach(s=>{if(s!=="presente")a.monthly++;});return a},{abs:0,vac:0,monthly:0});
+  return <div className="app-shell">
+    <aside className="sidebar"><div className="brand"><span className="brand-mark"><ShieldCheck size={21}/></span><span>guardia<strong>flow</strong></span></div><div className="side-label">OPERACIÓN</div><nav><button className="nav-item active"><CalendarDays size={18}/> Control diario</button><button className="nav-item"><UsersRound size={18}/> Guardias</button><button className="nav-item"><FileText size={18}/> Reportes</button></nav><div className="side-note"><Sparkles size={17}/><div><b>Atajo de terreno</b><span>Marca desde tu celular en 2 toques.</span></div></div><div className="user"><div className="avatar small">AM</div><div><b>Andrés Morales</b><span>Supervisor</span></div><MoreHorizontal size={18}/></div></aside>
+    <main className="main"><header className="topbar"><button className="mobile-menu"><Menu size={21}/></button><div><p className="eyebrow">MIÉRCOLES, 09 DE OCTUBRE</p><h1>Control de personal</h1></div><div className="top-actions"><button className="outline"><Send size={16}/> <span>Enviar reporte</span></button><button className="primary"><span>+ Agregar guardia</span></button></div></header>
+      <section className="hero-row"><div><p className="eyebrow teal">RESUMEN DEL DÍA</p><h2>La cobertura de hoy está bajo control.</h2><p className="muted">Revisa marcaciones y resuelve incidencias antes del cambio de turno.</p></div><div className="date-control"><button>‹</button><span><CalendarDays size={16}/> Octubre 2026</span><button>›</button></div></section>
+      <section className="stats"><div className="stat-card accent"><div className="stat-icon green"><UsersRound size={18}/></div><div><span>Guardias en turno</span><b>{guards.length}</b><small><i className="dot green-dot"/> 100% cobertura</small></div></div><div className="stat-card"><div className="stat-icon red"><Stethoscope size={18}/></div><div><span>Ausencias hoy</span><b>{totals.abs}</b><small className="red-text">2 requieren atención</small></div></div><div className="stat-card"><div className="stat-icon blue"><Umbrella size={18}/></div><div><span>En vacaciones</span><b>{totals.vac}</b><small>En el equipo actual</small></div></div><div className="stat-card"><div className="stat-icon purple"><Clock3 size={18}/></div><div><span>Incidencia mensual</span><b>{(totals.monthly*.5).toFixed(1).replace(".",",")} <em>días</em></b><small>Calculada por factor</small></div></div></section>
+      <section className="toolbar"><div className="tabs"><button className={view==="month"?"selected":""} onClick={()=>setView("month")}>Vista mensual</button><button className={view==="mobile"?"selected":""} onClick={()=>setView("mobile")}>Marcación rápida</button></div><div className="filters"><label className="search"><Search size={16}/><input placeholder="Buscar nombre o RUT" value={query} onChange={e=>setQuery(e.target.value)}/></label><label className="select"><MapPin size={15}/><select value={post} onChange={e=>setPost(e.target.value)}><option>Todos los puestos</option><option>Torre Norte</option><option>Bodega Central</option><option>Parque Industrial</option><option>Clínica Los Robles</option></select><ChevronDown size={14}/></label></div></section>
+      {view==="mobile"?<section className="cards-view"><div className="mobile-hint"><Sparkles size={17}/><span>Presiona un estado para marcar. Cada cambio se guarda al instante.</span></div>{filtered.map(g=><div className="guard-card" key={g.id}><div className="guard-head"><div className="avatar">{g.avatar}</div><div className="guard-id"><b>{g.name}</b><span>{g.post} · {g.shift}</span></div><span className="status-pill" style={{background:STATUS[g.statuses[9]||"presente"].bg,color:STATUS[g.statuses[9]||"presente"].color}}>{STATUS[g.statuses[9]||"presente"].label}</span></div><VacationBar guard={g}/><div className="tap-buttons">{(["presente","licencia","vacaciones","permiso"] as Status[]).map(s=>{const S=STATUS[s],Icon=S.icon;return <button key={s} style={{background:S.bg,color:S.color}} onClick={()=>setStatus(g.id,9,s)}><Icon size={18}/><span>{s==="permiso"?"Permiso":""}{s!=="permiso"&&S.label}</span></button>})}</div></div>)}</section>:<section className="matrix-card"><div className="matrix-head"><div><h3>Octubre <span>2026</span></h3><p>Haz clic en una celda para registrar el estado del día.</p></div><div className="legend">{(["presente","vacaciones","permiso","licencia","compensatorio"] as Status[]).map(s=><span key={s}><i style={{background:STATUS[s].color}}/>{STATUS[s].label}</span>)}</div></div><div className="matrix-scroll"><table><thead><tr><th className="sticky">GUARDIA</th>{days.map(d=><th key={d} className={d===9?"today":""}><b>{d}</b><small>{["D","L","M","X","J","V","S"][new Date(2026,9,d).getDay()]}</small></th>)}</tr></thead><tbody>{filtered.map(g=><tr key={g.id}><td className="sticky guard-cell"><div className="avatar mini">{g.avatar}</div><div><b>{g.name}</b><span>{g.post}</span></div></td>{days.map(d=>{const s=g.statuses[d]||"presente",S=STATUS[s],Icon=S.icon;return <td key={d} className={d===9?"today":""}><button className="cell" style={{background:S.bg,color:S.color}} onClick={()=>{setActive(g);setCell(d)}} title={`${S.label} · clic para cambiar`}><Icon size={15}/><span>{S.short}</span></button>{active?.id===g.id&&cell===d&&<div className="popover">{(Object.keys(STATUS) as Status[]).map(k=>{const K=STATUS[k],I=K.icon;return <button key={k} onClick={()=>setStatus(g.id,d,k)} style={{color:K.color}}><I size={16}/><span>{K.label}</span></button>})}</div>}</td>})}</tr>)}</tbody></table></div><div className="matrix-foot"><span><Check size={15}/> Cambios guardados automáticamente</span><span>Desliza horizontalmente para ver más días</span></div></section>}
+      <section className="lower-grid"><div className="alert-card"><div className="alert-title"><span className="alert-icon">!</span><div><h3>Atención requerida</h3><p>Revisa estos saldos antes del cierre de mes.</p></div></div>{guards.filter(g=>g.vacation-g.used<=1).slice(0,3).map(g=><div className="alert-row" key={g.id}><div className="avatar mini">{g.avatar}</div><div><b>{g.name}</b><span>{g.post}</span></div><strong className="danger">{g.vacation-g.used<=0?"Saldo agotado":"1 día restante"}</strong></div>)}</div><div className="quick-card"><div className="quick-icon"><FileText size={19}/></div><div><h3>Reporte del día</h3><p>Genera un resumen con las marcaciones y ausencias actuales.</p></div><button className="outline" onClick={()=>toast.success("Reporte preparado",{description:"Listo para compartir por WhatsApp o descargar en PDF."})}>Generar reporte</button></div></section>
+    </main>
+  </div>
 }
