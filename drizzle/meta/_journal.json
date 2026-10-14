@@ -15,6 +15,20 @@
       "when": 1791934561988,
       "tag": "0001_bitter_chronomancer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1791979422040,
+      "tag": "0002_nappy_frank_castle",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1791983304625,
+      "tag": "0003_public_bloodstrike",
+      "breakpoints": true
     }
   ]
 }
