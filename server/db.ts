@@ -2,6 +2,7 @@ import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, guards, absenceTypes, attendanceRecords, sites, supervisors } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { hashPassword, verifyPassword } from "./_core/localAuth";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() { if (!_db && process.env.DATABASE_URL) { try { _db = drizzle(process.env.DATABASE_URL); } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; } } return _db; }
@@ -17,6 +18,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
+export async function getSupervisorById(id:number){const db=await getDb();if(!db)return undefined;const rows=await db.select().from(supervisors).where(and(eq(supervisors.id,id),eq(supervisors.active,true))).limit(1);return rows[0];}
+export async function authenticateSupervisor(username:string,password:string){const db=await getDb();if(!db)return undefined;await ensureOperationalSeed();const rows=await db.select().from(supervisors).where(and(eq(supervisors.username,username.trim()),eq(supervisors.active,true))).limit(1);const supervisor=rows[0];return supervisor&&verifyPassword(password,supervisor.passwordHash)?supervisor:undefined;}
 
 const defaultTypes = [
   { code: "H", name: "Festivo", deductionFactor: "1", color: "#62b86f" },
@@ -60,7 +63,7 @@ export async function ensureOperationalSeed() {
   const db = await getDb(); if (!db) return false;
   const existingTypes = await db.select().from(absenceTypes); const typeMap = new Map(existingTypes.map(t => [t.code, t.id]));
   for (const type of defaultTypes) { if (typeMap.has(type.code)) await db.update(absenceTypes).set({ name:type.name, deductionFactor:type.deductionFactor, color:type.color }).where(eq(absenceTypes.code,type.code)); else { const inserted = await db.insert(absenceTypes).values(type); typeMap.set(type.code, Number(inserted[0].insertId)); } }
-  const existingSupervisors = await db.select().from(supervisors); if (!existingSupervisors.length) await db.insert(supervisors).values({name:"Andrés Morales", active:true});
+  const existingSupervisors = await db.select().from(supervisors); if (!existingSupervisors.length) await db.insert(supervisors).values({name:"Andrés Morales", username:"supervisor", passwordHash:hashPassword("GuardiaFlow2026!"), active:true}); else if (!existingSupervisors[0].username || !existingSupervisors[0].passwordHash) await db.update(supervisors).set({username:"supervisor",passwordHash:hashPassword("GuardiaFlow2026!"),active:true}).where(eq(supervisors.id,existingSupervisors[0].id));
   const existingSites = await db.select().from(sites); if (!existingSites.length) await db.insert(sites).values([{companyName:"Empresa Demo",siteName:"Torre Norte",isDemo:true,active:true},{companyName:"Empresa Demo",siteName:"Bodega Central",isDemo:true,active:true},{companyName:"Empresa Demo",siteName:"Parque Industrial",isDemo:true,active:true},{companyName:"Empresa Demo",siteName:"Clínica Los Robles",isDemo:true,active:true}]);
   const existingGuards = await db.select().from(guards); const guardMap = new Map(existingGuards.map(g => [g.rut, g.id]));
   if (!existingGuards.length) { await db.insert(guards).values(defaultGuards.map(g => ({ ...g, hireDate: new Date(g.hireDate) }))); const fresh = await db.select().from(guards); fresh.forEach(g => guardMap.set(g.rut, g.id)); }
@@ -82,7 +85,7 @@ export async function getOperationalSnapshot(start: string, end: string) {
   return { guards: guardRows, types: typeRows, records: recordRows, sites:siteRows, supervisors:supervisorRows };
 }
 export async function createGuard(input: {rut:string; name:string; post:string; siteId?:number|null; supervisorId?:number|null; hireDate?:string; annualVacation:string; vacationUsedBefore:string}) { const db = await getDb(); if (!db) throw new Error("Database is not available"); const annualVacation = Number(input.annualVacation || 15); const vacationUsedBefore = Number(input.vacationUsedBefore || 0); const initialVacation = annualVacation - vacationUsedBefore; const result = await db.insert(guards).values({ rut:input.rut, name:input.name, post:input.post, siteId:input.siteId??null, supervisorId:input.supervisorId??null, hireDate: input.hireDate ? new Date(input.hireDate) : null, initialVacation: initialVacation.toFixed(2), annualVacation: annualVacation.toFixed(2), vacationUsedBefore: vacationUsedBefore.toFixed(2), active:true, isDemo:false }); const rows = await db.select().from(guards).where(eq(guards.id, Number(result[0].insertId))).limit(1); return rows[0]; }
-export async function createSupervisor(name:string){const db=await getDb();if(!db)throw new Error("Database is not available");return db.insert(supervisors).values({name:name.trim(),active:true});}
+export async function createSupervisor(input:{name:string;username:string;password:string}){const db=await getDb();if(!db)throw new Error("Database is not available");return db.insert(supervisors).values({name:input.name.trim(),username:input.username.trim().toLowerCase(),passwordHash:hashPassword(input.password),active:true});}
 export async function createSite(input:{companyName:string;siteName:string;supervisorId?:number|null}){const db=await getDb();if(!db)throw new Error("Database is not available");return db.insert(sites).values({companyName:input.companyName.trim(),siteName:input.siteName.trim(),supervisorId:input.supervisorId??null,active:true,isDemo:false});}
 export async function archiveSite(id:number, active:boolean){const db=await getDb();if(!db)throw new Error("Database is not available");await db.update(sites).set({active}).where(eq(sites.id,id));if(!active)await db.update(guards).set({active:false}).where(eq(guards.siteId,id));}
 export async function deleteSite(id:number){const db=await getDb();if(!db)throw new Error("Database is not available");const gs=await db.select({id:guards.id}).from(guards).where(eq(guards.siteId,id));for(const g of gs){await db.delete(attendanceRecords).where(eq(attendanceRecords.guardId,g.id));await db.delete(guards).where(eq(guards.id,g.id));}await db.delete(sites).where(eq(sites.id,id));}
