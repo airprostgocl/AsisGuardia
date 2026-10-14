@@ -19,11 +19,27 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
 
 const defaultTypes = [
-  { code: "P", name: "Presente / turno normal", deductionFactor: "0", color: "#16745f" },
-  { code: "V", name: "Vacaciones", deductionFactor: "1", color: "#3172c6" },
-  { code: "L", name: "Licencia médica", deductionFactor: "0", color: "#d55454" },
-  { code: "PM", name: "Permiso / medio día", deductionFactor: "0.5", color: "#c46a16" },
-  { code: "C", name: "Día compensatorio", deductionFactor: "0", color: "#7552b8" },
+  { code: "H", name: "Festivo", deductionFactor: "1", color: "#62b86f" },
+  { code: "HA", name: "Medio día (mañana)", deductionFactor: "0.5", color: "#86c9db" },
+  { code: "HP", name: "Medio día (tarde)", deductionFactor: "0.5", color: "#9ed8e7" },
+  { code: "V", name: "Vacaciones", deductionFactor: "1", color: "#e7f58b" },
+  { code: "Q", name: "Cuarto de día", deductionFactor: "0.25", color: "#fff27c" },
+  { code: "M", name: "Maternidad / paternidad", deductionFactor: "1", color: "#f2b6db" },
+  { code: "S", name: "Baja por enfermedad", deductionFactor: "1", color: "#ee87df" },
+  { code: "L", name: "Día libre por compensación", deductionFactor: "1", color: "#d8e4a0" },
+  { code: "W", name: "Teletrabajo", deductionFactor: "1", color: "#c0e8a8" },
+  { code: "P", name: "Festivo público / oficial", deductionFactor: "1", color: "#a9a8e9" },
+  { code: "C", name: "Permiso por duelo", deductionFactor: "1", color: "#e6d9f1" },
+  { code: "X1", name: "Personalizado no deducible", deductionFactor: "0", color: "#c9e8bd" },
+  { code: "X2", name: "Personalizado no deducible 2", deductionFactor: "0", color: "#bfe7c1" },
+  { code: "X3", name: "Personalizado no deducible 3", deductionFactor: "0", color: "#c7c7c7" },
+  { code: "X4", name: "Personalizado deducible", deductionFactor: "1", color: "#e6a2c6" },
+  { code: "X5", name: "Personalizado deducible 2", deductionFactor: "1", color: "#8ed8cf" },
+  { code: "X6", name: "Personalizado deducible 3", deductionFactor: "1", color: "#a0d6de" },
+  { code: "X7", name: "Personalizado deducible 4", deductionFactor: "1", color: "#aad6e4" },
+  { code: "X8", name: "Personalizado deducible 5", deductionFactor: "1", color: "#a8d7c5" },
+  { code: "X9", name: "Personalizado deducible 6", deductionFactor: "1", color: "#99d9c4" },
+  { code: "X0", name: "Personalizado deducible 7", deductionFactor: "1", color: "#a8d9bd" },
 ];
 const defaultGuards = [
   { rut:"18.492.201-7", name:"Camila Rojas", post:"Torre Norte", hireDate:"2022-03-14", initialVacation:"15" },
@@ -43,7 +59,7 @@ const demoAbsences: Record<string, string> = {
 export async function ensureOperationalSeed() {
   const db = await getDb(); if (!db) return false;
   const existingTypes = await db.select().from(absenceTypes); const typeMap = new Map(existingTypes.map(t => [t.code, t.id]));
-  if (!existingTypes.length) { await db.insert(absenceTypes).values(defaultTypes); const fresh = await db.select().from(absenceTypes); fresh.forEach(t => typeMap.set(t.code, t.id)); }
+  for (const type of defaultTypes) { if (typeMap.has(type.code)) await db.update(absenceTypes).set({ name:type.name, deductionFactor:type.deductionFactor, color:type.color }).where(eq(absenceTypes.code,type.code)); else { const inserted = await db.insert(absenceTypes).values(type); typeMap.set(type.code, Number(inserted[0].insertId)); } }
   const existingGuards = await db.select().from(guards); const guardMap = new Map(existingGuards.map(g => [g.rut, g.id]));
   if (!existingGuards.length) { await db.insert(guards).values(defaultGuards.map(g => ({ ...g, hireDate: new Date(g.hireDate) }))); const fresh = await db.select().from(guards); fresh.forEach(g => guardMap.set(g.rut, g.id)); }
   const existingRecords = await db.select().from(attendanceRecords).limit(1);
