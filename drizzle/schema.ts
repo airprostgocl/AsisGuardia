@@ -15,7 +15,7 @@ export const companies = mysqlTable("companies", {
   id: int("id").autoincrement().primaryKey(), name: varchar("name", {length:180}).notNull().unique(), active: boolean("active").default(true).notNull(), isDemo: boolean("isDemo").default(false).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export const sites = mysqlTable("sites", {
-  id: int("id").autoincrement().primaryKey(), companyId: int("companyId"), companyName: varchar("companyName", {length:180}).notNull(), siteName: varchar("siteName", {length:180}).notNull(), supervisorId: int("supervisorId"), active: boolean("active").default(true).notNull(), isDemo: boolean("isDemo").default(false).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+  id: int("id").autoincrement().primaryKey(), companyId: int("companyId"), companyName: varchar("companyName", {length:180}).notNull(), siteName: varchar("siteName", {length:180}), supervisorId: int("supervisorId"), active: boolean("active").default(true).notNull(), isDemo: boolean("isDemo").default(false).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export const guards = mysqlTable("guards", {

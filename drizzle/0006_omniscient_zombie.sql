@@ -1,0 +1,1 @@
+ALTER TABLE `sites` MODIFY COLUMN `siteName` varchar(180);

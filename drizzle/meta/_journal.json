@@ -43,6 +43,13 @@
       "when": 1792068576573,
       "tag": "0005_cuddly_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1792069806771,
+      "tag": "0006_omniscient_zombie",
+      "breakpoints": true
     }
   ]
 }
