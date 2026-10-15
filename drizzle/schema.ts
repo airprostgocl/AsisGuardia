@@ -11,6 +11,9 @@ export const users = mysqlTable("users", {
 export const supervisors = mysqlTable("supervisors", {
   id: int("id").autoincrement().primaryKey(), name: varchar("name", {length:180}).notNull(), username: varchar("username", {length:80}).notNull().unique(), passwordHash: varchar("passwordHash", {length:180}).notNull(), active: boolean("active").default(true).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+export const supervisorSites = mysqlTable("supervisorSites", {
+  id: int("id").autoincrement().primaryKey(), supervisorId: int("supervisorId").notNull(), siteId: int("siteId").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 export const companies = mysqlTable("companies", {
   id: int("id").autoincrement().primaryKey(), name: varchar("name", {length:180}).notNull().unique(), active: boolean("active").default(true).notNull(), isDemo: boolean("isDemo").default(false).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { localSessionCookie, createLocalSession } from "./_core/localAuth";
-import { archiveSite, authenticateSupervisor, clearDemoData, createGuard, createSite, createSupervisor, deleteGuard, deleteSite, getOperationalSnapshot, upsertAttendance } from "./db";
+import { archiveSite, authenticateSupervisor, clearDemoData, createGuard, createSite, createSupervisor, deleteGuard, deleteSite, getOperationalSnapshot, setSiteAssignment, upsertAttendance } from "./db";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -14,10 +14,11 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => { const cookieOptions = getSessionCookieOptions(ctx.req); ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 }); ctx.res.clearCookie(localSessionCookie.name,{...localSessionCookie.options,maxAge:0}); return { success: true } as const; }),
   }),
   operation: router({
-    snapshot: protectedProcedure.input(z.object({ start:z.string(), end:z.string() })).query(({ input }) => getOperationalSnapshot(input.start, input.end)),
+    snapshot: protectedProcedure.input(z.object({ start:z.string(), end:z.string() })).query(({ input,ctx }) => getOperationalSnapshot(input.start, input.end, ctx.supervisor?.id)),
     createGuard: protectedProcedure.input(z.object({ rut:z.string().min(3), name:z.string().min(2), post:z.string().min(2), siteId:z.number().nullable().optional(), supervisorId:z.number().nullable().optional(), hireDate:z.string().optional(), annualVacation:z.string().default("15"), vacationUsedBefore:z.string().default("0") })).mutation(({ input }) => createGuard(input)),
     createSupervisor: protectedProcedure.input(z.object({name:z.string().min(2),username:z.string().min(2),password:z.string().min(8)})).mutation(({input})=>createSupervisor(input)),
-    createSite: protectedProcedure.input(z.object({companyName:z.string().min(2),siteName:z.string().optional().nullable(),supervisorId:z.number().nullable().optional()})).mutation(({input})=>createSite(input)),
+    createSite: protectedProcedure.input(z.object({companyName:z.string().min(2),siteName:z.string().optional().nullable()})).mutation(({input,ctx})=>createSite(input,ctx.supervisor?.id)),
+    setSiteAssignment: protectedProcedure.input(z.object({siteId:z.number(),assigned:z.boolean()})).mutation(({input,ctx})=>{if(!ctx.supervisor)throw new Error("Supervisor no identificado");return setSiteAssignment(ctx.supervisor.id,input.siteId,input.assigned);}),
     archiveSite: protectedProcedure.input(z.object({id:z.number(),active:z.boolean()})).mutation(({input})=>archiveSite(input.id,input.active)),
     deleteSite: protectedProcedure.input(z.object({id:z.number()})).mutation(({input})=>deleteSite(input.id)),
     deleteGuard: protectedProcedure.input(z.object({id:z.number()})).mutation(({input})=>deleteGuard(input.id)),
