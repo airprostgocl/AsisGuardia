@@ -22,3 +22,4 @@
 @media(max-width:720px){.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}.filters .search{grid-column:1/-1;width:auto}.filters .select{min-width:0;max-width:none;width:auto;padding:0 8px}.filters .select select{width:100%;min-width:0;font-size:10px;padding-right:14px}.filters .select svg:first-child{flex:none}.filters .select svg:last-child{right:6px}.admin-card{min-width:0}.form-grid{gap:10px}}
 .optional-label{font-size:10px;color:#8b9a95;font-weight:500}
 @media(max-width:720px){.admin-grid .form-grid{grid-template-columns:1fr}.admin-grid .form-grid label{min-width:0}.admin-grid .form-grid input,.admin-grid .form-grid select{width:100%;box-sizing:border-box}}
+.site-save-button{margin-top:14px;min-height:38px}.site-save-button:disabled{opacity:.55;cursor:wait}
