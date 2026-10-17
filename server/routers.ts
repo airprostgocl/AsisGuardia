@@ -15,7 +15,7 @@ export const appRouter = router({
   }),
   operation: router({
     snapshot: protectedProcedure.input(z.object({ start:z.string(), end:z.string() })).query(({ input,ctx }) => getOperationalSnapshot(input.start, input.end, ctx.supervisor?.id)),
-    createGuard: protectedProcedure.input(z.object({ rut:z.string().min(3), name:z.string().min(2), post:z.string().min(2), siteId:z.number().nullable().optional(), supervisorId:z.number().nullable().optional(), hireDate:z.string().optional(), annualVacation:z.string().default("15"), vacationUsedBefore:z.string().default("0") })).mutation(({ input }) => createGuard(input)),
+    createGuard: protectedProcedure.input(z.object({ rut:z.string().min(3), name:z.string().min(2), post:z.string().min(2), companyId:z.number().nullable().optional(), siteId:z.number().nullable().optional(), supervisorId:z.number().nullable().optional(), hireDate:z.string().optional(), annualVacation:z.string().default("15"), vacationUsedBefore:z.string().default("0") })).mutation(({ input }) => createGuard(input)),
     createSupervisor: protectedProcedure.input(z.object({name:z.string().min(2),username:z.string().min(2),password:z.string().min(8)})).mutation(({input})=>createSupervisor(input)),
     createSite: protectedProcedure.input(z.object({companyName:z.string().min(2),siteName:z.string().optional().nullable()})).mutation(({input,ctx})=>createSite(input,ctx.supervisor?.id)),
     setSiteAssignment: protectedProcedure.input(z.object({siteId:z.number(),assigned:z.boolean()})).mutation(({input,ctx})=>{if(!ctx.supervisor)throw new Error("Supervisor no identificado");return setSiteAssignment(ctx.supervisor.id,input.siteId,input.assigned);}),
