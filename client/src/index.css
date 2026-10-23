@@ -31,3 +31,5 @@
 .mobile-causes button,.all-causes button{background:#fff;color:#355c52;border:1px solid #e5eee9}
 .mobile-causes button:hover,.all-causes button:hover,.mobile-causes button.cause-selected{background:#e5f5ef;color:#145f4e}
 .mobile-causes button small,.all-causes button small{color:#536b63}
+/* Paridad web/móvil: la causa activa queda claramente identificada en el popover de escritorio. */
+.all-causes button.cause-selected{background:#e1f4eb!important;color:#145f4e!important;border:1px solid #2c9b7d!important;box-shadow:inset 3px 0 0 #16856b;font-weight:800}
