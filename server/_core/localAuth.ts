@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 const COOKIE = "guardiaflow_session";
-const secret = () => process.env.MANUS_JWT_SECRET || process.env.DATABASE_URL || "guardiaflow-development-secret";
+const secret = () => process.env.MANUS_JWT_SECRET || (process.env.SUPABASE_POOLER_DATABASE_URL ?? process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL) || "guardiaflow-development-secret";
 
 export function hashPassword(password: string) {
   const salt = crypto.randomBytes(16).toString("hex");

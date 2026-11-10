@@ -27,6 +27,7 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
 
   const ctx: TrpcContext = {
     user,
+    supervisor: null,
     req: {
       protocol: "https",
       headers: {},
@@ -49,10 +50,18 @@ describe("auth.logout", () => {
     const result = await caller.auth.logout();
 
     expect(result).toEqual({ success: true });
-    expect(clearedCookies).toHaveLength(1);
+    expect(clearedCookies).toHaveLength(2);
     expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
     expect(clearedCookies[0]?.options).toMatchObject({
       maxAge: -1,
+      secure: true,
+      sameSite: "none",
+      httpOnly: true,
+      path: "/",
+    });
+    expect(clearedCookies[1]?.name).toBe("guardiaflow_session");
+    expect(clearedCookies[1]?.options).toMatchObject({
+      maxAge: 0,
       secure: true,
       sameSite: "none",
       httpOnly: true,
