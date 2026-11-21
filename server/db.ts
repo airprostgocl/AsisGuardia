@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -62,11 +63,30 @@ const demoAbsences: Record<string, string> = {
   "16.741.908-9:2026-10-03":"PM", "20.104.630-1:2026-10-06":"C", "15.990.412-6:2026-10-01":"L",
 };
 
+/**
+ * Credenciales del primer supervisor, solo se usan si la tabla está vacía.
+ * Toma INITIAL_SUPERVISOR_* del entorno; en desarrollo usa valores de demo y en
+ * producción, si faltan, genera una contraseña aleatoria y la muestra una vez en el log.
+ */
+export function initialSupervisorCredentials() {
+  const name = process.env.INITIAL_SUPERVISOR_NAME?.trim() || "Supervisor";
+  const username = process.env.INITIAL_SUPERVISOR_USERNAME?.trim() || "supervisor";
+  const configured = process.env.INITIAL_SUPERVISOR_PASSWORD;
+  if (configured) {
+    if (configured.length < 8) throw new Error("INITIAL_SUPERVISOR_PASSWORD debe tener al menos 8 caracteres");
+    return { name, username, password: configured };
+  }
+  if (process.env.NODE_ENV !== "production") return { name, username, password: "GuardiaFlow2026!" };
+  const password = crypto.randomBytes(12).toString("base64url");
+  console.warn(`[Seed] Supervisor inicial creado. Usuario: ${username} · Contraseña temporal: ${password} — cámbiala al ingresar o define INITIAL_SUPERVISOR_PASSWORD.`);
+  return { name, username, password };
+}
+
 export async function ensureOperationalSeed() {
   const db = await getDb(); if (!db) return false;
   const existingTypes = await db.select().from(absenceTypes); const typeMap = new Map(existingTypes.map(t => [t.code, t.id]));
   for (const type of defaultTypes) { if (typeMap.has(type.code)) await db.update(absenceTypes).set({ name:type.name, deductionFactor:type.deductionFactor, color:type.color }).where(eq(absenceTypes.code,type.code)); else { const inserted = await db.insert(absenceTypes).values(type).returning({ id: absenceTypes.id }); typeMap.set(type.code, inserted[0].id); } }
-  const existingSupervisors = await db.select().from(supervisors); if (!existingSupervisors.length) await db.insert(supervisors).values({name:"Andrés Morales", username:"supervisor", passwordHash:hashPassword("GuardiaFlow2026!"), active:true}); else if (!existingSupervisors[0].username || !existingSupervisors[0].passwordHash) await db.update(supervisors).set({username:"supervisor",passwordHash:hashPassword("GuardiaFlow2026!"),active:true}).where(eq(supervisors.id,existingSupervisors[0].id));
+  const existingSupervisors = await db.select().from(supervisors); if (!existingSupervisors.length) { const seed = initialSupervisorCredentials(); await db.insert(supervisors).values({name:seed.name, username:seed.username, passwordHash:hashPassword(seed.password), active:true}); } else if (!existingSupervisors[0].username || !existingSupervisors[0].passwordHash) { const seed = initialSupervisorCredentials(); await db.update(supervisors).set({username:seed.username,passwordHash:hashPassword(seed.password),active:true}).where(eq(supervisors.id,existingSupervisors[0].id)); }
   const existingCompanies = await db.select().from(companies); if (!existingCompanies.some(c=>c.name==="Empresa Demo")) await db.insert(companies).values({name:"Empresa Demo",isDemo:true,active:true}); const companyRows = await db.select().from(companies); const demoCompany = companyRows.find(c=>c.name==="Empresa Demo");
   const existingSites = await db.select().from(sites); if (!existingSites.length) await db.insert(sites).values([{companyId:demoCompany?.id??null,companyName:"Empresa Demo",siteName:"Torre Norte",isDemo:true,active:true},{companyId:demoCompany?.id??null,companyName:"Empresa Demo",siteName:"Bodega Central",isDemo:true,active:true},{companyId:demoCompany?.id??null,companyName:"Empresa Demo",siteName:"Parque Industrial",isDemo:true,active:true},{companyId:demoCompany?.id??null,companyName:"Empresa Demo",siteName:"Clínica Los Robles",isDemo:true,active:true}]);
   const sitesToLink = await db.select().from(sites); for (const site of sitesToLink) { let company = (await db.select().from(companies).where(eq(companies.name,site.companyName)).limit(1))[0]; if (!company) { const inserted = await db.insert(companies).values({name:site.companyName,active:true,isDemo:site.isDemo}).returning({ id: companies.id }); company = (await db.select().from(companies).where(eq(companies.id,inserted[0].id)).limit(1))[0]; } if (company && site.companyId !== company.id) await db.update(sites).set({companyId:company.id}).where(eq(sites.id,site.id)); if (site.supervisorId) { const legacy = await db.select().from(supervisorSites).where(and(eq(supervisorSites.supervisorId,site.supervisorId),eq(supervisorSites.siteId,site.id))).limit(1); if (!legacy[0]) await db.insert(supervisorSites).values({supervisorId:site.supervisorId,siteId:site.id}); } }

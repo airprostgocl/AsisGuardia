@@ -18,3 +18,12 @@ Platform configuration is readable and editable through `webdev.config`. Default
 ## Persistencia
 
 La aplicación usa PostgreSQL en Supabase mediante `SUPABASE_POOLER_DATABASE_URL`. Las credenciales se configuran como secretos del entorno y no deben guardarse en el repositorio. El esquema y la migración reproducible están en `drizzle/schema.ts` y `drizzle-pg/`.
+
+## Configuración
+
+Copia `.env.example` a `.env` y completa los valores. En producción son obligatorios:
+
+- `SESSION_SECRET` (o `MANUS_JWT_SECRET`): sin ella el servidor no arranca.
+- `INITIAL_SUPERVISOR_PASSWORD`: contraseña del primer supervisor. Si falta, se genera una aleatoria y se muestra una sola vez en el log.
+
+En desarrollo, el supervisor inicial es `supervisor` / `GuardiaFlow2026!` salvo que se definan las variables `INITIAL_SUPERVISOR_*`.

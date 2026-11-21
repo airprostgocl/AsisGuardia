@@ -1,7 +1,16 @@
 import crypto from "node:crypto";
 
 const COOKIE = "guardiaflow_session";
-const secret = () => process.env.MANUS_JWT_SECRET || (process.env.SUPABASE_POOLER_DATABASE_URL ?? process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL) || "guardiaflow-development-secret";
+const DEV_SECRET = "guardiaflow-development-secret";
+
+/** Clave para firmar sesiones. Obligatoria en producción (SESSION_SECRET o MANUS_JWT_SECRET). */
+export function sessionSecret() {
+  const configured = process.env.SESSION_SECRET || process.env.MANUS_JWT_SECRET;
+  if (configured) return configured;
+  if (process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET (o MANUS_JWT_SECRET) es obligatorio en producción");
+  return DEV_SECRET;
+}
+const secret = sessionSecret;
 
 export function hashPassword(password: string) {
   const salt = crypto.randomBytes(16).toString("hex");
