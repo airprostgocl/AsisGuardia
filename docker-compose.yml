@@ -1,0 +1,38 @@
+# Despliegue en un VPS que ya tiene Traefik (por ejemplo, la plantilla n8n de Hostinger).
+# La app NO publica puertos: Traefik recibe el tráfico en 80/443, gestiona el HTTPS
+# (Let's Encrypt) y lo reenvía al contenedor por la red de Docker compartida.
+#
+# Uso:  docker compose up -d --build
+# Todas las variables se leen del archivo .env (ver .env.example y DEPLOY.md).
+
+services:
+  guardiaflow:
+    build: .
+    image: guardiaflow:latest
+    container_name: guardiaflow
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-root_default}
+      - traefik.http.routers.guardiaflow.rule=Host(`${APP_DOMAIN:?Define APP_DOMAIN en .env}`)
+      - traefik.http.routers.guardiaflow.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.guardiaflow.tls=true
+      - traefik.http.routers.guardiaflow.tls.certresolver=${TRAEFIK_CERTRESOLVER:-mytlschallenge}
+      - traefik.http.services.guardiaflow.loadbalancer.server.port=3000
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-root_default}
