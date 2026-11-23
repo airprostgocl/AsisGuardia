@@ -25,6 +25,8 @@ La aplicación usa PostgreSQL en Supabase mediante `SUPABASE_POOLER_DATABASE_URL
 Copia `.env.example` a `.env` y completa los valores. En producción son obligatorios:
 
 - `SESSION_SECRET` (o `MANUS_JWT_SECRET`): sin ella el servidor no arranca.
+- `APP_URL`: URL pública, para los enlaces de recuperación de contraseña.
+- `SMTP_USER` y `SMTP_PASS`: cuenta de Gmail y su contraseña de aplicación, para enviar esos correos.
 - `INITIAL_SUPERVISOR_PASSWORD`: contraseña del primer supervisor. Si falta, se genera una aleatoria y se muestra una sola vez en el log.
 
 En desarrollo, el supervisor inicial es `supervisor` / `GuardiaFlow2026!` salvo que se definan las variables `INITIAL_SUPERVISOR_*`.

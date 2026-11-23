@@ -8,6 +8,13 @@
       "when": 1794271918102,
       "tag": "0000_amused_screwball",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795469479925,
+      "tag": "0001_supervisor_admin_and_password_reset",
+      "breakpoints": true
     }
   ]
 }

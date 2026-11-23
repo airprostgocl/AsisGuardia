@@ -41,3 +41,15 @@
 @media(max-width:720px){.directory-row > button{flex:1;min-width:0;margin-left:0!important}.directory-row .guard-id{min-width:calc(100% - 55px)}.directory-row .vacation{margin-left:43px}}
 
 .form-grid textarea{min-height:72px;resize:vertical;border:1px solid var(--border);border-radius:8px;padding:9px 10px;font:inherit;font-size:12px;background:#fbfcfb;outline:0}.form-grid textarea:focus{border-color:#8dcab9;box-shadow:0 0 0 3px #dff4ec}.grouped-sites{display:grid;gap:14px}.company-group{display:grid;gap:7px}.company-group-title{color:#0e6b5b;font-size:12px;padding-bottom:3px}.company-group .my-site-option{margin-left:8px}
+
+/* Supervisores: administración y recuperación de contraseña */
+.supervisor-admin-card{grid-column:1/-1;order:1}
+.admin-grid .my-sites-card{order:2}
+.supervisor-admin-card > .primary{margin-top:12px}
+.supervisor-list{margin-top:16px}
+.supervisor-list .site-row > div:last-child{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.supervisor-list .admin-form-stack{flex:1;min-width:0}
+.admin-subtitle{font-size:14px;margin:18px 0 10px !important}
+.link-button{display:block;margin:14px auto 0;background:none;border:0;color:#16745f;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline}
+.link-button:hover{color:#0f5546}
+.login-card input{border:1px solid #d3e0da;background:#f8fbfa;border-radius:10px;min-height:42px;padding:0 12px}

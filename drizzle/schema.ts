@@ -19,7 +19,19 @@ export const supervisors = pgTable("supervisors", {
   name: varchar("name", { length: 180 }).notNull(),
   username: varchar("username", { length: 80 }).notNull().unique(),
   passwordHash: varchar("passwordHash", { length: 180 }).notNull(),
+  email: varchar("email", { length: 320 }).unique(),
+  isAdmin: boolean("isAdmin").default(false).notNull(),
+  mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
   active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  supervisorId: integer("supervisorId").notNull(),
+  tokenHash: varchar("tokenHash", { length: 128 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -86,6 +98,7 @@ export const attendanceRecords = pgTable("attendance_records", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type Supervisor = typeof supervisors.$inferSelect;
 export type Guard = typeof guards.$inferSelect;
 export type AbsenceType = typeof absenceTypes.$inferSelect;
 export type AttendanceRecord = typeof attendanceRecords.$inferSelect;

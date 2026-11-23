@@ -42,6 +42,9 @@ Completa como mínimo:
 - `SESSION_SECRET` — la clave generada arriba.
 - `INITIAL_SUPERVISOR_PASSWORD` — solo importa si la base de datos está vacía.
 - `APP_PORT` — déjalo en `3010` (debe estar libre: `ss -tlnp | grep :3010` no debe mostrar nada).
+- `APP_URL` — `https://guardian.agenciaiachile.site` (obligatoria para los enlaces de recuperación).
+- `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` — cuenta de Gmail que envía los correos de recuperación de
+  contraseña. `SMTP_PASS` es la **contraseña de aplicación de Gmail** (ver más abajo), no la contraseña normal.
 
 Si algún valor contiene el carácter `$`, escríbelo como `$$`.
 
@@ -98,11 +101,30 @@ archivo de este sitio y renueva el certificado automáticamente.
 
 Abre `https://guardian.agenciaiachile.site`.
 
+## Contraseña de aplicación de Gmail
+
+Necesaria para que la app envíe los correos de «¿Olvidaste tu contraseña?».
+
+1. Entra a la cuenta de Gmail que enviará los correos.
+2. Activa la verificación en 2 pasos (myaccount.google.com → Seguridad), si no está activa.
+3. Abre myaccount.google.com/apppasswords, escribe un nombre (ej. `GuardiaFlow`) y pulsa **Crear**.
+4. Copia las 16 letras **sin espacios** en `SMTP_PASS`.
+
+## Migraciones de base de datos
+
+Cuando una versión nueva agrega cambios a la base de datos (archivos en `drizzle-pg/`), aplícalos así:
+
+```bash
+cd /opt/guardiaflow && docker compose run --rm guardiaflow pnpm db:migrate
+```
+
 ## Actualizar a una versión nueva
 
 ```bash
 cd /opt/guardiaflow && git pull && docker compose up -d --build
 ```
+
+Si la versión trae migraciones, aplícalas (sección anterior) antes de recrear el contenedor.
 
 ## Comandos útiles
 

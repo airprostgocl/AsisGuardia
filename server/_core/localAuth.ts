@@ -26,8 +26,13 @@ export function verifyPassword(password: string, stored: string) {
   return expectedBuffer.length === actual.length && crypto.timingSafeEqual(actual, expectedBuffer);
 }
 
-export function createLocalSession(supervisorId: number) {
-  const payload = Buffer.from(JSON.stringify({ supervisorId, exp: Date.now() + 1000 * 60 * 60 * 12 })).toString("base64url");
+/** Huella de la contraseña: al cambiarla, las sesiones anteriores dejan de ser válidas. */
+export function passwordFingerprint(passwordHash: string) {
+  return crypto.createHash("sha256").update(passwordHash).digest("base64url").slice(0, 16);
+}
+
+export function createLocalSession(supervisorId: number, passwordHash: string) {
+  const payload = Buffer.from(JSON.stringify({ supervisorId, pv: passwordFingerprint(passwordHash), exp: Date.now() + 1000 * 60 * 60 * 12 })).toString("base64url");
   const signature = crypto.createHmac("sha256", secret()).update(payload).digest("base64url");
   return `${payload}.${signature}`;
 }
@@ -40,7 +45,7 @@ export function readLocalSession(token?: string | string[]) {
   if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try {
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return data.exp > Date.now() ? { supervisorId: Number(data.supervisorId) } : null;
+    return data.exp > Date.now() && typeof data.pv === "string" ? { supervisorId: Number(data.supervisorId), pv: data.pv as string } : null;
   } catch { return null; }
 }
 

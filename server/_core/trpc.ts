@@ -10,11 +10,17 @@ const t = initTRPC.context<TrpcContext>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
+/** Rutas permitidas mientras el supervisor tiene pendiente cambiar su contraseña temporal. */
+const ALLOWED_WHILE_PASSWORD_CHANGE_PENDING = new Set(["auth.changePassword"]);
+
 const requireUser = t.middleware(async opts => {
-  const { ctx, next } = opts;
+  const { ctx, next, path } = opts;
 
   if (!ctx.user && !ctx.supervisor) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
+  if (ctx.supervisor?.mustChangePassword && !ALLOWED_WHILE_PASSWORD_CHANGE_PENDING.has(path)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Debes cambiar tu contraseña temporal antes de continuar" });
   }
 
   return next({
@@ -41,5 +47,16 @@ export const adminProcedure = t.procedure.use(
         user: ctx.user,
       },
     });
+  }),
+);
+
+/** Solo el supervisor administrador (isAdmin). */
+export const supervisorAdminProcedure = protectedProcedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+    if (!ctx.supervisor?.isAdmin) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Solo el administrador puede gestionar supervisores" });
+    }
+    return next({ ctx: { ...ctx, supervisor: ctx.supervisor } });
   }),
 );

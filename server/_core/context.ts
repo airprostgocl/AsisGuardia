@@ -1,7 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
-import { localSessionCookie, readLocalSession } from "./localAuth";
+import { localSessionCookie, passwordFingerprint, readLocalSession } from "./localAuth";
 import { getSupervisorById } from "../db";
 
 export type TrpcContext = {
@@ -27,7 +27,10 @@ export async function createContext(
     const cookieHeader = opts.req.headers.cookie || "";
     const localCookie = cookieHeader.split(";").map(v=>v.trim()).find(v=>v.startsWith(`${localSessionCookie.name}=`))?.slice(localSessionCookie.name.length + 1);
     const session = readLocalSession(localCookie);
-    if (session) supervisor = await getSupervisorById(session.supervisorId);
+    if (session) {
+      const found = await getSupervisorById(session.supervisorId);
+      supervisor = found && passwordFingerprint(found.passwordHash) === session.pv ? found : null;
+    }
   }
 
   return {
