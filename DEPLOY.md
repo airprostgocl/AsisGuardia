@@ -1,55 +1,26 @@
-# Despliegue en VPS (Hostinger) con Docker + Traefik
+# Despliegue en VPS (Hostinger) con Docker + Nginx
 
-Guía para un VPS que ya ejecuta n8n con Traefik (plantilla de Hostinger). La app se suma a
-ese Traefik: no ocupa los puertos 80/443 y obtiene su certificado HTTPS automáticamente.
+Guía para un VPS donde **Nginx está instalado en el sistema** (fuera de Docker), atiende los
+puertos 80/443 y sirve otros sitios. La app corre en Docker escuchando solo en
+`127.0.0.1:3010`; Nginx le reenvía las visitas a su dominio y certbot pone el HTTPS.
+Los demás sitios y contenedores no se modifican.
 
-## 1. Dominio
+Dominio: `guardian.agenciaiachile.site` (registro A → IP del VPS).
 
-En el panel DNS de tu dominio crea un registro **A**:
-
-| Tipo | Nombre | Valor |
-|---|---|---|
-| A | `asistencia` (o el subdominio que quieras) | IP del VPS |
-
-Espera a que propague (`ping asistencia.tudominio.cl` debe responder con la IP del VPS).
-
-## 2. Datos de tu Traefik
-
-Conéctate al VPS (`ssh root@IP_DEL_VPS` o la terminal del panel de Hostinger) y ejecuta:
+## 1. Descargar el proyecto
 
 ```bash
-docker ps --format '{{.Names}}'
-```
-
-Anota el nombre del contenedor de Traefik (por ejemplo `root-traefik-1`) y úsalo aquí:
-
-```bash
-docker inspect root-traefik-1 --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}'
-```
-
-```bash
-docker inspect root-traefik-1 --format '{{json .Args}}'
-```
-
-- El primer comando da la **red** (normalmente `root_default`) → `TRAEFIK_NETWORK`.
-- En el segundo busca `--entrypoints.XXX.address=:443` → `TRAEFIK_ENTRYPOINT` (normalmente `websecure`)
-  y `--certificatesresolvers.YYY.acme` → `TRAEFIK_CERTRESOLVER` (normalmente `mytlschallenge`).
-
-## 3. Descargar el proyecto
-
-```bash
-git clone https://github.com/airprostgocl/AsisGuardia.git /opt/guardiaflow
+git clone -b claude/busy-dirac-f169b6 https://github.com/airprostgocl/AsisGuardia.git /opt/guardiaflow
 ```
 
 ```bash
 cd /opt/guardiaflow
 ```
 
-Si el repositorio es privado, git pedirá usuario y contraseña: usa tu usuario de GitHub y,
-como contraseña, un *token* (GitHub → Settings → Developer settings → Personal access tokens,
-permiso de solo lectura sobre el repositorio).
+Si el repositorio es privado, usa tu usuario de GitHub y, como contraseña, un token
+(Fine-grained, solo este repositorio, permiso *Contents: Read-only*).
 
-## 4. Configurar `.env`
+## 2. Configurar `.env`
 
 ```bash
 cp .env.example .env
@@ -70,33 +41,62 @@ Completa como mínimo:
 - `SUPABASE_POOLER_DATABASE_URL` — la URL de conexión de Supabase.
 - `SESSION_SECRET` — la clave generada arriba.
 - `INITIAL_SUPERVISOR_PASSWORD` — solo importa si la base de datos está vacía.
-- `APP_DOMAIN`, `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER` — del paso 1 y 2.
+- `APP_PORT` — déjalo en `3010` (debe estar libre: `ss -tlnp | grep :3010` no debe mostrar nada).
 
 Si algún valor contiene el carácter `$`, escríbelo como `$$`.
 
-## 5. Arrancar
+## 3. Arrancar la app
 
 ```bash
 docker compose up -d --build
 ```
 
-La primera compilación tarda unos minutos. Comprueba el estado y los logs:
+La primera compilación tarda unos minutos. Comprueba:
 
 ```bash
-docker compose ps
+docker compose logs --tail 20 guardiaflow
+```
+
+Debe aparecer `Server listening on port 3000`. Y desde el VPS:
+
+```bash
+curl -s http://127.0.0.1:3010/api/health
+```
+
+Debe responder `{"status":"ok"}`.
+
+## 4. Publicar con Nginx
+
+```bash
+cp /opt/guardiaflow/deploy/nginx/guardian.conf /etc/nginx/sites-available/guardian
 ```
 
 ```bash
-docker compose logs -f guardiaflow
+ln -s /etc/nginx/sites-available/guardian /etc/nginx/sites-enabled/guardian
 ```
 
-Debe aparecer `Server listening on port 3000`. Abre `https://APP_DOMAIN` en el navegador.
-
-Si la base de datos es nueva (vacía), crea las tablas una vez:
+Verifica la configuración **antes** de recargar (si da error, no recargues y revisa):
 
 ```bash
-docker compose run --rm guardiaflow pnpm db:migrate
+nginx -t
 ```
+
+```bash
+systemctl reload nginx
+```
+
+`reload` aplica el cambio sin cortar los demás sitios.
+
+## 5. HTTPS
+
+```bash
+certbot --nginx -d guardian.agenciaiachile.site
+```
+
+Si pregunta por redirección, elige redirigir HTTP a HTTPS. Certbot solo modifica el
+archivo de este sitio y renueva el certificado automáticamente.
+
+Abre `https://guardian.agenciaiachile.site`.
 
 ## Actualizar a una versión nueva
 
@@ -104,12 +104,23 @@ docker compose run --rm guardiaflow pnpm db:migrate
 cd /opt/guardiaflow && git pull && docker compose up -d --build
 ```
 
+## Comandos útiles
+
+| Acción | Comando (dentro de `/opt/guardiaflow`) |
+|---|---|
+| Ver estado | `docker compose ps` |
+| Ver logs | `docker compose logs -f guardiaflow` |
+| Reiniciar | `docker compose restart guardiaflow` |
+| Detener solo esta app | `docker compose down` |
+
+No uses `docker system prune` ni `docker compose down` en carpetas de otros proyectos.
+
 ## Problemas frecuentes
 
 | Síntoma | Causa probable |
 |---|---|
-| `network root_default not found` | `TRAEFIK_NETWORK` no coincide con la red del paso 2. |
-| `404 page not found` en el navegador | Traefik no ve la app: revisa `TRAEFIK_NETWORK` y `TRAEFIK_ENTRYPOINT`. |
-| Aviso de certificado no válido | El DNS aún no propaga o `TRAEFIK_CERTRESOLVER` es incorrecto. Revisa `docker logs root-traefik-1`. |
+| `502 Bad Gateway` | La app no está corriendo o `APP_PORT` no coincide con `proxy_pass` en el archivo de Nginx. |
+| `port is already allocated` | El puerto 3010 está ocupado: cambia `APP_PORT` en `.env` y `proxy_pass` en `/etc/nginx/sites-available/guardian`. |
 | El contenedor se reinicia con `SESSION_SECRET ... obligatorio` | Falta `SESSION_SECRET` en `.env`. |
-| Login no mantiene la sesión | Estás entrando por `http://` o por IP; usa `https://` con el dominio. |
+| Se abre otro sitio en vez de la app | Falta el enlace en `sites-enabled` o no se recargó Nginx. |
+| Login no mantiene la sesión | Estás entrando por `http://`; usa `https://` (paso 5). |
