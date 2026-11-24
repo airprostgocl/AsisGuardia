@@ -149,3 +149,50 @@ button.side-note b{font-size:13px}
 .main{min-width:0}
 .mobile-week-hint{display:none}
 @media(max-width:720px){.mobile-week-hint{display:flex;width:100%;align-items:center;gap:12px;text-align:left;background:#0e6b5b;color:#fff;border:0;border-radius:13px;padding:14px;margin:0 0 14px;cursor:pointer;font-family:inherit}.mobile-week-hint span{flex:1;display:flex;flex-direction:column;gap:3px}.mobile-week-hint b{font-size:13px}.mobile-week-hint small{font-size:11px;color:#cfeee4}}
+
+/* Empresas primero, puntos como detalle opcional */
+.guard-place{display:block;font-size:11px;color:#2f4a42;line-height:1.35;font-style:normal}
+.guard-place strong{font-weight:700;color:#1f3d35}
+.guard-place em{font-style:normal;font-weight:500;color:#71807b}
+.directory-shift .guard-place{display:inline}
+.select.is-disabled{opacity:.6}
+.select.is-disabled select{cursor:not-allowed}
+.company-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.company-item{border:1px solid #dfe8e3;border-radius:11px;background:#fbfdfc;padding:12px 14px}
+.company-item.is-mine{border-color:#9fd3c2;background:#f3faf7}
+.company-check{display:flex;align-items:center;gap:11px;cursor:pointer}
+.company-check input,.point-check input{accent-color:#0e6b5b}
+.company-check input{width:18px;height:18px;flex:none}
+.company-check span{display:grid;gap:2px;min-width:0}
+.company-check b{font-size:16px;color:#17362e;letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.company-check small{font-size:11px;color:#66766f}
+.point-list{margin:10px 0 0 29px;padding-left:12px;border-left:2px solid #dcebe5;display:grid;gap:5px}
+.point-list-label{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#7d8d87}
+.point-check{display:flex;align-items:center;gap:8px;font-size:12px;color:#3f544d;cursor:pointer}
+.point-check input{width:14px;height:14px}
+.registry-list{display:grid;gap:10px}
+.registry-company{border:1px solid #dfe8e3;border-radius:11px;padding:12px 14px;background:#fff}
+.registry-company.archived{opacity:.65}
+.registry-company-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.registry-company-head b{display:block;font-size:15px;color:#17362e}
+.registry-company-head span{font-size:11px;color:#66766f}
+.registry-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.registry-point{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0 0 14px;padding:7px 10px;border-radius:8px;background:#f7faf9;font-size:12px;color:#3f544d}
+.registry-point.archived{opacity:.6}
+.registry-point small{margin-left:8px;font-size:10px;color:#7d8d87}
+.registry-actions .small{height:28px;padding:0 9px;font-size:11px}
+@media(max-width:720px){.company-list{grid-template-columns:1fr}.registry-company-head{display:block}.registry-company-head .registry-actions{justify-content:flex-start;margin-top:8px}.registry-point{display:block}.registry-point .registry-actions{justify-content:flex-start;margin-top:6px}}
+/* Lista de empresas: una columna ordenada; puntos como etiquetas pequeñas */
+.company-list{grid-template-columns:1fr;gap:8px}
+.company-item{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:11px 14px}
+.company-check{flex:1 1 260px;min-width:0}
+.point-list{margin:0;padding:0;border:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:flex-end;flex:1 1 320px}
+.point-list-label{margin-right:2px}
+.point-check{border:1px solid #d6e4de;background:#fff;border-radius:99px;padding:4px 10px 4px 7px;font-size:11px}
+.point-check:has(input:checked){border-color:#8fcdb9;background:#e7f5f0;color:#0e5c4d}
+/* Tabla: guardia alineado a la izquierda, ubicación en una línea */
+.matrix-scroll td.guard-cell{text-align:left}
+.guard-cell>div:last-child{min-width:0;text-align:left}
+.guard-cell .guard-place{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+@media(max-width:720px){.point-list{justify-content:flex-start}}
+.guard-cell .guard-place,.alert-row .guard-place{font-size:11px;margin-top:3px}

@@ -96,73 +96,113 @@ export function SupervisorsPanel({ currentId }: { currentId: number }) {
 type SitesProps = {
   sites: any[]; companies: any[]; assignedSiteIds: number[]; savingSite: boolean;
   onCreateSite: (x: any) => void; onAssignSite: (siteId: number, assigned: boolean) => void;
-  onArchive: (id: number, active: boolean) => void; onDelete: (id: number) => void; onClearDemo: () => void;
+  onArchive: (id: number, active: boolean) => void; onDelete: (id: number) => void; onDeleteCompany: (ids: number[], name: string) => void; onClearDemo: () => void;
 };
 
-export function SitesPanel({ sites, companies, assignedSiteIds, savingSite, onCreateSite, onAssignSite, onArchive, onDelete, onClearDemo }: SitesProps) {
+type CompanyGroup = { key: string; companyId: number | null; name: string; companyRow: any | null; points: any[]; allRows: any[] };
+
+/** Agrupa los sitios por empresa: la fila sin punto representa a la empresa; las demás son sus puntos (opcionales). */
+function groupByCompany(rows: any[]): CompanyGroup[] {
+  const groups: CompanyGroup[] = [];
+  for (const x of rows) {
+    let g = groups.find(g => (g.companyId && g.companyId === x.companyId) || (!g.companyId && !x.companyId && g.name === x.companyName));
+    if (!g) { g = { key: String(x.companyId ?? x.companyName), companyId: x.companyId ?? null, name: x.companyName, companyRow: null, points: [], allRows: [] }; groups.push(g); }
+    g.allRows.push(x);
+    if (x.siteName) g.points.push(x); else if (!g.companyRow) g.companyRow = x;
+  }
+  return groups.sort((a, b) => a.name.localeCompare(b.name, "es"));
+}
+
+export function SitesPanel({ sites, companies, assignedSiteIds, savingSite, onCreateSite, onAssignSite, onArchive, onDelete, onDeleteCompany, onClearDemo }: SitesProps) {
   const [company, setCompany] = useState("");
   const [site, setSite] = useState("");
   const activeSites = sites.filter(x => x.active);
-  const siteGroups = activeSites.reduce((groups: any[], x: any) => {
-    let group = groups.find(g => g.companyId === x.companyId || (!g.companyId && !x.companyId && g.companyName === x.companyName));
-    if (!group) { group = { companyId: x.companyId, companyName: x.companyName, sites: [] }; groups.push(group); }
-    group.sites.push(x);
-    return groups;
-  }, []);
-  const selectedCount = activeSites.filter(x => assignedSiteIds.includes(x.id)).length;
-  const archivedCount = sites.length - activeSites.length;
+  const groups = groupByCompany(activeSites);
+  const registry = groupByCompany(sites);
+  const isAssigned = (x: any) => assignedSiteIds.includes(x.id);
+  // Una empresa cuenta como «mía» si tengo la empresa completa o alguno de sus puntos.
+  const companyChecked = (g: CompanyGroup) => g.companyRow ? isAssigned(g.companyRow) : g.points.length > 0 && g.points.every(isAssigned);
+  const companyPartial = (g: CompanyGroup) => !companyChecked(g) && g.allRows.some(isAssigned);
+  const toggleCompany = (g: CompanyGroup, checked: boolean) => {
+    if (g.companyRow) onAssignSite(g.companyRow.id, checked);
+    else g.points.filter(p => isAssigned(p) !== checked).forEach(p => onAssignSite(p.id, checked));
+  };
+  const myCompanies = groups.filter(g => g.allRows.some(isAssigned)).length;
+  const archivedCompanies = registry.filter(g => g.allRows.every(x => !x.active)).length;
 
   return (
     <section className="admin-page">
-      <PageIntro eyebrow="CONFIGURACIÓN OPERATIVA" title="Empresas y puntos" text="Agrega empresas y puntos de vigilancia, y marca los que tú visitas o cubres." />
+      <PageIntro eyebrow="CONFIGURACIÓN OPERATIVA" title="Empresas y puntos" text="Las empresas son la base para ubicar a tus guardias. Los puntos de vigilancia son opcionales: solo para empresas que quieran registrar lugares dentro de sus instalaciones." />
       <div className="admin-grid">
         <div className="admin-card sites-add-card">
-          <h3>Agregar empresa o punto</h3>
-          <p className="admin-help">Si te asignan una empresa nueva, escríbela aquí. El punto es opcional: puedes guardar solo la empresa o agregar empresa y punto.</p>
+          <h3>Agregar empresa</h3>
+          <p className="admin-help">Escribe el nombre de la empresa. Si además quieres registrar puntos de vigilancia dentro de ella, agrégalos en el segundo campo; también puedes añadirlos más tarde escribiendo el nombre de una empresa existente.</p>
           <div className="form-grid">
-            <label>Empresa nueva o existente
+            <label>Empresa (nueva o existente)
               <input list="company-options" placeholder="Ej. Empresa Los Andes" value={company} onChange={e => setCompany(e.target.value)} />
               <datalist id="company-options">{companies.map((x: any) => <option key={x.id} value={x.name} />)}</datalist>
             </label>
-            <label>Puntos de vigilancia <span className="optional-label">(opcional · uno por línea o separados por coma)</span>
-              <textarea rows={3} placeholder={"Torre Norte\nBodega Central\nParque Industrial"} value={site} onChange={e => setSite(e.target.value)} />
+            <label>Puntos de vigilancia dentro de la empresa <span className="optional-label">(opcional · uno por línea o separados por coma)</span>
+              <textarea rows={3} placeholder={"Torre Norte\nBodega Central"} value={site} onChange={e => setSite(e.target.value)} />
             </label>
           </div>
           <button type="button" className="primary site-save-button" disabled={savingSite || !company.trim()} onClick={() => { onCreateSite({ companyName: company.trim(), siteName: site.trim() || null }); setCompany(""); setSite(""); }}>
-            {savingSite ? "Guardando…" : site.trim() ? "Agregar empresa y punto" : "Agregar empresa"}
+            {savingSite ? "Guardando…" : site.trim() ? "Agregar empresa y puntos" : "Agregar empresa"}
           </button>
         </div>
 
-        <CollapsibleCard className="my-sites-card" title="Mis empresas y puntos" summary={`${selectedCount} de ${activeSites.length} puntos seleccionados para ti`} defaultOpen={activeSites.length <= 6}>
-          <p className="admin-help">Marca una o varias empresas y sus puntos. Las empresas nuevas que agregues quedan seleccionadas automáticamente para ti.</p>
-          <div className="my-sites-list grouped-sites">
-            {siteGroups.map((group: any) => (
-              <div className="company-group" key={`${group.companyId || group.companyName}`}>
-                <strong className="company-group-title">{group.companyName}</strong>
-                {group.sites.map((x: any) => (
-                  <label className="my-site-option" key={x.id}>
-                    <input type="checkbox" checked={assignedSiteIds.includes(x.id)} onChange={e => onAssignSite(x.id, e.target.checked)} />
-                    <span><b>{x.siteName || "Empresa sin punto específico"}</b><small>{x.siteName ? "Punto de vigilancia" : "La empresa completa"}</small></span>
-                  </label>
-                ))}
+        <CollapsibleCard className="my-sites-card" title="Mis empresas" summary={`${myCompanies} de ${groups.length} empresas seleccionadas para ti`} defaultOpen={groups.length <= 8}>
+          <p className="admin-help">Marca las empresas que visitas o cubres. Si una empresa tiene puntos de vigilancia, puedes marcar también los puntos específicos.</p>
+          <div className="company-list">
+            {groups.map(g => (
+              <div className={`company-item ${g.allRows.some(isAssigned) ? "is-mine" : ""}`} key={g.key}>
+                <label className="company-check">
+                  <input type="checkbox" checked={companyChecked(g)} ref={el => { if (el) el.indeterminate = companyPartial(g); }} onChange={e => toggleCompany(g, e.target.checked)} />
+                  <span><b>{g.name}</b><small>{g.points.length ? `${g.points.length} punto${g.points.length === 1 ? "" : "s"} de vigilancia` : "Sin puntos de vigilancia"}</small></span>
+                </label>
+                {g.points.length > 0 && (
+                  <div className="point-list">
+                    <span className="point-list-label">Puntos (opcional)</span>
+                    {g.points.map(p => (
+                      <label className="point-check" key={p.id}>
+                        <input type="checkbox" checked={isAssigned(p)} onChange={e => onAssignSite(p.id, e.target.checked)} />
+                        <span>{p.siteName}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
-          {!siteGroups.length && <small>No hay empresas o puntos activos todavía. Crea el primero arriba.</small>}
+          {!groups.length && <small>No hay empresas activas todavía. Crea la primera arriba.</small>}
         </CollapsibleCard>
 
-        <CollapsibleCard className="registry-card" title="Registro de sitios" summary={`${activeSites.length} activos${archivedCount ? ` · ${archivedCount} archivados` : ""} · archivar o eliminar`}>
-          <div className="site-list">
-            {sites.map(x => (
-              <div className={`site-row ${!x.active ? "archived" : ""}`} key={x.id}>
-                <div><b>{x.companyName} · {x.siteName || "Sede principal"}</b><span>{x.active ? "Activo" : "Archivado"} · {assignedSiteIds.includes(x.id) ? "Seleccionado para mí" : "No seleccionado"}</span></div>
-                <div>
-                  <button className="outline" onClick={() => onArchive(x.id, !x.active)}>{x.active ? "Archivar" : "Reactivar"}</button>
-                  <button className="danger-button" onClick={() => onDelete(x.id)}>Eliminar definitivamente</button>
+        <CollapsibleCard className="registry-card" title="Registro de empresas" summary={`${registry.length - archivedCompanies} activas${archivedCompanies ? ` · ${archivedCompanies} archivadas` : ""} · archivar o eliminar`}>
+          <div className="registry-list">
+            {registry.map(g => {
+              const companyActive = g.allRows.some(x => x.active);
+              return (
+                <div className={`registry-company ${!companyActive ? "archived" : ""}`} key={g.key}>
+                  <div className="registry-company-head">
+                    <div><b>{g.name}</b><span>{companyActive ? "Activa" : "Archivada"} · {g.points.length ? `${g.points.length} punto${g.points.length === 1 ? "" : "s"}` : "sin puntos"}</span></div>
+                    <div className="registry-actions">
+                      <button className="outline" onClick={() => g.allRows.filter(x => x.active === companyActive).forEach(x => onArchive(x.id, !companyActive))}>{companyActive ? "Archivar empresa" : "Reactivar empresa"}</button>
+                      <button className="danger-button" onClick={() => onDeleteCompany(g.allRows.map(x => x.id), g.name)}>Eliminar empresa</button>
+                    </div>
+                  </div>
+                  {g.points.map(p => (
+                    <div className={`registry-point ${!p.active ? "archived" : ""}`} key={p.id}>
+                      <span>↳ {p.siteName}<small>{p.active ? "Activo" : "Archivado"}</small></span>
+                      <div className="registry-actions">
+                        <button className="outline small" onClick={() => onArchive(p.id, !p.active)}>{p.active ? "Archivar" : "Reactivar"}</button>
+                        <button className="danger-button small" onClick={() => onDelete(p.id)}>Eliminar</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
-            {!sites.length && <small>No hay sitios registrados.</small>}
+              );
+            })}
+            {!registry.length && <small>No hay empresas registradas.</small>}
           </div>
         </CollapsibleCard>
 
