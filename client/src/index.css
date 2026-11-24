@@ -53,3 +53,5 @@
 .link-button{display:block;margin:14px auto 0;background:none;border:0;color:#16745f;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline}
 .link-button:hover{color:#0f5546}
 .login-card input{border:1px solid #d3e0da;background:#f8fbfa;border-radius:10px;min-height:42px;padding:0 12px}
+.admin-form-stack input{height:37px;border:1px solid var(--border);border-radius:8px;padding:0 10px;font-size:12px;outline:0;background:#fbfcfb}
+.admin-form-stack input:focus{border-color:#8dcab9;box-shadow:0 0 0 3px #dff4ec}
