@@ -196,3 +196,10 @@ button.side-note b{font-size:13px}
 .guard-cell .guard-place{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
 @media(max-width:720px){.point-list{justify-content:flex-start}}
 .guard-cell .guard-place,.alert-row .guard-place{font-size:11px;margin-top:3px}
+/* Tarjeta de guardias: registrados a la izquierda, presentes del día a la derecha */
+.stat-card.split>div:nth-child(2){flex:1;min-width:0}
+.stat-card.split small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat-present{border-left:1px solid #dfe9e5;padding-left:14px;text-align:right;min-width:78px}
+.stat-present span{color:#16745f!important;font-weight:700}
+.stat-present b{color:#16745f}
+@media(max-width:720px){.stat-present{padding-left:9px;min-width:62px}}
