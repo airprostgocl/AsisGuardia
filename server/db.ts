@@ -47,6 +47,7 @@ const defaultTypes = [
   { code: "X8", name: "Personalizado deducible 5", deductionFactor: "1", color: "#a8d7c5" },
   { code: "X9", name: "Personalizado deducible 6", deductionFactor: "1", color: "#99d9c4" },
   { code: "X0", name: "Personalizado deducible 7", deductionFactor: "1", color: "#a8d9bd" },
+  { code: "A", name: "Día administrativo", deductionFactor: "0", color: "#2a9bb0" },
 ];
 const defaultGuards = [
   { rut:"18.492.201-7", name:"Camila Rojas", post:"Torre Norte", hireDate:"2022-03-14", initialVacation:"15" },

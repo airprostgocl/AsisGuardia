@@ -55,6 +55,9 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
 - Historial de marcaciones: `server/attendanceAudit.ts` y tabla `attendance_history`; solo el administrador
   lo consulta (`supervisors.markAuthors` / `markHistory`). El snapshot no envía `registeredBy` a supervisores.
 - Ausencias del día: cualquier causa registrada cuenta como 1 (decisión del usuario, incluido medio día).
+- Días administrativos: causa `A` (factor 0, permiso con goce de sueldo), 6 por guardia y por período anual
+  que se renueva en su fecha de ingreso (`server/adminDays.ts`, ruta `operation.adminDays`). Al superar los 6
+  se pide confirmación, no se bloquea.
 
 ## Pruebas locales
 

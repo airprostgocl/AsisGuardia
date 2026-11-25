@@ -235,3 +235,4 @@ button.side-note b{font-size:13px}
 .add-to-mine small{font-size:11px;font-weight:500;color:#4f645d}
 .modal .form-grid select{height:37px;border:1px solid #d3ddd8;border-radius:8px;padding:0 10px;font-size:12px;background:#fbfcfb;color:#17362e;outline:0}.modal .form-grid select:focus{border-color:#8dcab9;box-shadow:0 0 0 3px #dff4ec}.modal .form-grid select:disabled{opacity:.6}
 .add-to-mine.is-required{cursor:default}.add-to-mine.is-required input{opacity:1}
+.guard-card .admin-days{margin-top:-6px}
