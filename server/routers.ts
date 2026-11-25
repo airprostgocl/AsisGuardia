@@ -7,7 +7,7 @@ import { localSessionCookie, createLocalSession } from "./_core/localAuth";
 import { archiveSite, authenticateSupervisor, clearDemoData, createGuard, createSite, deleteGuard, deleteSite, getOperationalSnapshot, setSiteAssignment, updateGuard } from "./db";
 import { adminCreateSupervisor, adminResetSupervisorPassword, adminSetSupervisorActive, adminUpdateSupervisor, changeOwnPassword, listSupervisors, MIN_PASSWORD_LENGTH, publicSupervisor, requestPasswordReset, resetPasswordWithToken, updateOwnProfile } from "./supervisorAccounts";
 import { z } from "zod";
-import { adminDaysSummary } from "./adminDays";
+import { adminDayCheck, adminDaysSummary, assertAdminDayAllowed } from "./adminDays";
 import { listMarkAuthors, listMarkHistory, markAttendanceWithAudit } from "./attendanceAudit";
 import type { Request } from "express";
 
@@ -56,7 +56,8 @@ export const appRouter = router({
     deleteGuard: protectedProcedure.input(z.object({id:z.number()})).mutation(({input})=>deleteGuard(input.id)),
     clearDemo: protectedProcedure.mutation(()=>clearDemoData()),
     adminDays: protectedProcedure.input(z.object({ asOf:z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })).query(({ input }) => adminDaysSummary(input.asOf)),
-    mark: protectedProcedure.input(z.object({ guardId:z.number(), recordDate:z.string(), absenceTypeId:z.number().nullable(), notes:z.string().optional() })).mutation(({ input, ctx }) => markAttendanceWithAudit(input, ctx.supervisor?.id ?? null)),
+    adminDayCheck: protectedProcedure.input(z.object({ guardId:z.number(), date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })).query(({ input }) => adminDayCheck(input.guardId, input.date)),
+    mark: protectedProcedure.input(z.object({ guardId:z.number(), recordDate:z.string(), absenceTypeId:z.number().nullable(), notes:z.string().optional() })).mutation(async ({ input, ctx }) => { await assertAdminDayAllowed(input.guardId, input.recordDate, input.absenceTypeId); return markAttendanceWithAudit(input, ctx.supervisor?.id ?? null); }),
   }),
   supervisors: router({
     list: supervisorAdminProcedure.query(() => listSupervisors()),
