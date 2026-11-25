@@ -70,7 +70,7 @@ export default function Home(){
   const Place=({g}:{g:any})=>{const p=placeFor(g);return <span className="guard-place"><strong>{p.company}</strong>{p.point&&<em> · {p.point}</em>}</span>;};
   const filtered=useMemo(()=>guards.filter((g:any)=>(`${g.name} ${g.rut}`).toLowerCase().includes(query.toLowerCase())&&(companyFilter==="Todas las empresas"||String(companyForGuard(g))===companyFilter)&&(siteFilter==="Todos los puntos"||String(g.siteId)===siteFilter)),[guards,query,companyFilter,siteFilter,sites]);
   // Guardias ordenados por empresa (y luego por nombre); cada empresa con un color propio y estable.
-  const COMPANY_COLORS=["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#17becf","#bcbd22","#111827"];
+  const COMPANY_COLORS=["#1f77b4","#ff7f0e","#2ca02c","#d62728","#17becf","#9467bd","#bcbd22","#8c564b","#e377c2"];
   const companyColor=useMemo(()=>{const m=new Map<any,string>();[...companies].sort((a:any,b:any)=>a.id-b.id).forEach((c:any,i:number)=>m.set(c.id,COMPANY_COLORS[i%COMPANY_COLORS.length]));return m;},[companies]);
   const colorFor=(g:any)=>companyColor.get(companyForGuard(g))||"#b8c4bf";
   const byCompany=[...filtered].sort((a:any,b:any)=>placeFor(a).company.localeCompare(placeFor(b).company,"es")||(placeFor(a).point||"").localeCompare(placeFor(b).point||"","es")||a.name.localeCompare(b.name,"es"));
