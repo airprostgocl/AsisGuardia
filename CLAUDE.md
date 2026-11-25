@@ -49,6 +49,8 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
 - Colores de causas: la UI usa la paleta de categorías (`causeCategory` en `Home.tsx`), no los colores
   de `absence_types` en la base de datos, para que coincidan con la leyenda.
 - Al pedir cambios de diseño, el usuario exige **no tocar procesos** (datos, API, marcaciones).
+- Avisos temporales (sonner, abajo a la derecha): siempre con fondo de color y texto blanco
+  (`components/ui/sonner.tsx` + clases `gf-toast-*` en `index.css`); nunca fondo blanco o transparente.
 - Alcance por supervisor: cada supervisor ve en los listados solo los guardias de las empresas/puntos
   marcados en «Mis empresas» (`myScope`/`inMyScope` en `Home.tsx`); el administrador ve todo. Es un filtro
   de vista: cualquier supervisor puede marcar cualquier empresa (así se hacen los reemplazos).

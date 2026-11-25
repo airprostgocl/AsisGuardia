@@ -236,3 +236,15 @@ button.side-note b{font-size:13px}
 .modal .form-grid select{height:37px;border:1px solid #d3ddd8;border-radius:8px;padding:0 10px;font-size:12px;background:#fbfcfb;color:#17362e;outline:0}.modal .form-grid select:focus{border-color:#8dcab9;box-shadow:0 0 0 3px #dff4ec}.modal .form-grid select:disabled{opacity:.6}
 .add-to-mine.is-required{cursor:default}.add-to-mine.is-required input{opacity:1}
 .guard-card .admin-days{margin-top:-6px}
+
+/* Avisos temporales: siempre con fondo de color y texto blanco */
+[data-sonner-toaster] [data-sonner-toast].gf-toast{background:#0e5c4d;color:#fff;border:1px solid rgba(0,0,0,.12);box-shadow:0 10px 28px rgba(16,44,40,.28);border-radius:12px;padding:14px 16px;gap:10px}
+[data-sonner-toaster] [data-sonner-toast].gf-toast-success{background:#147a5f}
+[data-sonner-toaster] [data-sonner-toast].gf-toast-error{background:#c0392b}
+[data-sonner-toaster] [data-sonner-toast].gf-toast-info{background:#2563b8}
+[data-sonner-toaster] [data-sonner-toast].gf-toast-warning{background:#b7620b}
+[data-sonner-toaster] [data-sonner-toast].gf-toast .gf-toast-title{color:#fff;font-size:13px;font-weight:800}
+[data-sonner-toaster] [data-sonner-toast].gf-toast .gf-toast-description{color:rgba(255,255,255,.92)!important;font-size:12px;line-height:1.4}
+[data-sonner-toaster] [data-sonner-toast].gf-toast [data-icon]{color:#fff}
+[data-sonner-toaster] [data-sonner-toast].gf-toast [data-icon] svg{fill:currentColor}
+[data-sonner-toaster] [data-sonner-toast].gf-toast .gf-toast-close{background:#fff;color:#17362e;border-color:rgba(0,0,0,.15)}
