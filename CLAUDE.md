@@ -62,7 +62,8 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
   El enfoque es temporal: se quita al navegar por el menú, cambiar empresa/punto o buscar. **No** usar el
   buscador para esto: es compartido por todas las secciones y dejaba la lista filtrada.
 - Reportes: dos vistas (`components/ReportViews.tsx`): «Detalle por fecha» (la original) y «Resumen y
-  calendario» (resumen por causa agrupado por empresa con subtotales + calendario de colores). Descargas en
+  calendario» (tabla compacta: chips de causas, Aus./Pond./Vac./Adm. y mini-mapa del período en filas de 10 días;
+  agrupada por empresa, encabezado y total fijos, alto ajustado a la pantalla con `useFitHeight`; en celular, tarjetas). Descargas en
   Excel (4 hojas, exceljs) y PDF (jspdf + autotable), generadas en el navegador (`lib/reportExport.ts`, carga
   diferida). Presente = sin causa registrada, abreviado ✓ («P» es Festivo público / oficial).
 - En tablas HTML, la barrita de color va en la **primera celda** (`td.company-bar`), nunca en el `tr`:

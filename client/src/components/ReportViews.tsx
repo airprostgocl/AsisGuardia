@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Building2 } from "lucide-react";
 
 /** Una celda (día) del informe. `present` = sin causa registrada. */
@@ -58,16 +59,7 @@ function withGroups(rows: ReportGuard[], grouped: boolean, colSpan: number, rend
 export function ReportViewSwitch({ view, rows, days, types, grouped }: { view: ReportView; rows: ReportGuard[]; days: string[]; types: any[]; grouped: boolean }) {
   if (!rows.length) return <p className="report-empty">No hay guardias para el filtro seleccionado.</p>;
 
-  if (view === "combined") {
-    return (
-      <div className="report-combined">
-        <h4 className="report-section-title">Resumen por guardia · agrupado por empresa</h4>
-        <ReportViewSwitch view="summary" rows={rows} days={days} types={types} grouped />
-        <h4 className="report-section-title">Calendario del período</h4>
-        <ReportViewSwitch view="calendar" rows={rows} days={days} types={types} grouped />
-      </div>
-    );
-  }
+  if (view === "combined") return <CompactReport rows={rows} days={days} types={types} />;
 
   if (view === "detail") {
     return (
@@ -140,5 +132,125 @@ export function ReportViewSwitch({ view, rows, days, types, grouped }: { view: R
         ];
       })}
     </tbody></table></div>
+  );
+}
+
+/* ---------- Vista «Resumen y calendario» compacta ---------- */
+
+/** Divide los días en filas de 10 (1–10, 11–20, 21–31); si sobra un solo día, se suma a la última fila. */
+function chunkDays<T>(items: T[], size = 10): T[][] {
+  if (items.length <= size + 1) return [items];
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  if (out.length > 1 && out[out.length - 1].length === 1) out[out.length - 2].push(...out.pop()!);
+  return out;
+}
+
+/**
+ * Alto para que el informe termine en el borde inferior de la pantalla (sin desplazar la página).
+ * En el celular no se limita: ahí se usa el desplazamiento normal de la página.
+ */
+function useFitHeight(min = 240) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | undefined>();
+  useEffect(() => {
+    const calc = () => {
+      const el = ref.current; if (!el) return;
+      if (window.innerWidth <= 720) { setHeight(undefined); return; }
+      const rect = el.getBoundingClientRect();
+      const top = rect.top + window.scrollY;
+      const below = document.documentElement.scrollHeight - (rect.bottom + window.scrollY); // relleno bajo el informe
+      setHeight(Math.max(min, window.innerHeight - top - below - 2));
+    };
+    calc();
+    const t = setTimeout(calc, 50);
+    window.addEventListener("resize", calc);
+    return () => { clearTimeout(t); window.removeEventListener("resize", calc); };
+  }, [min]);
+  return { ref, height };
+}
+
+function causeCounts(g: ReportGuard) {
+  const m = new Map<string, { code: string; name: string; color: string; n: number }>();
+  for (const c of g.cells) if (!c.present) { const x = m.get(c.code); if (x) x.n++; else m.set(c.code, { code: c.code, name: c.name, color: c.color, n: 1 }); }
+  return Array.from(m.values());
+}
+
+function CauseChips({ g }: { g: ReportGuard }) {
+  const list = causeCounts(g);
+  if (!list.length) return <span className="cr-none">Sin ausencias</span>;
+  return <div className="cr-chips">{list.map(x => <span key={x.code} className="cr-chip" style={{ background: x.color }} title={x.name}>{x.code} ×{x.n}</span>)}</div>;
+}
+
+function MiniMap({ g }: { g: ReportGuard }) {
+  return (
+    <div className="cr-map">
+      {chunkDays(g.cells).map((row, i) => (
+        <div className="cr-map-row" key={i}>
+          {row.map(c => <i key={c.date} className={c.present ? "p" : "e"} style={c.present ? undefined : { background: c.color }} title={`${new Date(`${c.date}T12:00:00`).toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" })} · ${c.present ? "Presente" : `${c.code} · ${c.name}`}`} />)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CompactReport({ rows, days, types }: { rows: ReportGuard[]; days: string[]; types: any[] }) {
+  const { ref, height } = useFitHeight();
+  const groups = groupByCompany(rows);
+  const total = rows.reduce((a, r) => ({ absent: a.absent + r.absent, weighted: a.weighted + r.weighted }), { absent: 0, weighted: 0 });
+  const legend = usedCodes(rows, types).map(t => ({ code: t.code, name: t.name, color: rows.flatMap(r => r.cells).find(c => !c.present && c.code === t.code)?.color || "#999" }));
+  const first = days[0], last = days[days.length - 1];
+  const rangeHint = days.length > 11 ? chunkDays(days).map(r => `${r[0].slice(8)}–${r[r.length - 1].slice(8)}`).join(" · ") : `${first?.slice(8)}–${last?.slice(8)}`;
+
+  return (
+    <div className="cr">
+      <div className="cr-legend">
+        <span><i className="p" /> Presente</span>
+        {legend.map(l => <span key={l.code}><i style={{ background: l.color }} /> {l.code} · {l.name}</span>)}
+        <small>Mapa del período por filas: {rangeHint}</small>
+      </div>
+      <div className="cr-scroll" ref={ref} style={height ? { maxHeight: height } : undefined}>
+        {/* Escritorio: tabla */}
+        <table className="cr-table">
+          <thead><tr><th className="cr-guard">Guardia</th><th>Causas</th><th className="num">Aus.</th><th className="num">Pond.</th><th className="num">Vac. rest.</th><th className="num">Adm.</th><th>Mapa del período</th></tr></thead>
+          <tbody>
+            {groups.flatMap(g => [
+              <tr className="cr-group" key={`g-${g.company}`} style={{ ["--company-color" as any]: g.color }}>
+                <td colSpan={7}><Building2 size={13} /> <b>{g.company}</b><span>{g.rows.length} guardia{g.rows.length === 1 ? "" : "s"} · {g.absent} ausencias · {fmt(g.weighted)} días pond.</span></td>
+              </tr>,
+              ...g.rows.map(r => (
+                <tr key={r.id}>
+                  <td className="cr-guard company-bar" style={{ ["--company-color" as any]: r.color }}><b>{r.name}</b><small>{r.point || r.company}</small></td>
+                  <td><CauseChips g={r} /></td>
+                  <td className="num"><b>{r.absent}</b></td>
+                  <td className="num">{fmt(r.weighted)}</td>
+                  <td className="num">{fmt(r.vacLeft)}</td>
+                  <td className="num">{r.adminUsed ?? "—"}/6</td>
+                  <td><MiniMap g={r} /></td>
+                </tr>
+              )),
+            ])}
+          </tbody>
+          <tfoot><tr><td className="cr-guard">Total · {rows.length} guardias</td><td /><td className="num">{total.absent}</td><td className="num">{fmt(total.weighted)}</td><td /><td /><td /></tr></tfoot>
+        </table>
+        {/* Celular: tarjetas */}
+        <div className="cr-cards">
+          {groups.map(g => (
+            <section key={g.company} className="cr-card-group" style={{ ["--company-color" as any]: g.color }}>
+              <h5><Building2 size={13} /> {g.company}<span>{g.absent} aus. · {fmt(g.weighted)} pond.</span></h5>
+              {g.rows.map(r => (
+                <article key={r.id} className="cr-card company-bar" style={{ ["--company-color" as any]: r.color }}>
+                  <div className="cr-card-head"><b>{r.name}</b><small>{r.point || r.company}</small></div>
+                  <CauseChips g={r} />
+                  <div className="cr-card-stats"><span><b>{r.absent}</b> aus.</span><span><b>{fmt(r.weighted)}</b> pond.</span><span><b>{fmt(r.vacLeft)}</b> vac.</span><span><b>{r.adminUsed ?? "—"}/6</b> adm.</span></div>
+                  <MiniMap g={r} />
+                </article>
+              ))}
+            </section>
+          ))}
+          <div className="cr-card-total">Total · {rows.length} guardias · {total.absent} ausencias · {fmt(total.weighted)} días pond.</div>
+        </div>
+      </div>
+    </div>
   );
 }
