@@ -310,3 +310,6 @@ button.side-note b{font-size:13px}
 .company-bar::before{content:"";position:absolute;left:5px;top:25%;height:50%;width:3px;border-radius:3px;background:var(--company-color,#b8c4bf)}
 .matrix-scroll td.guard-cell.company-bar{position:sticky}
 .guard-card.company-bar{padding-left:18px}
+/* Reporte: presentes en verde claro; ausencias con el color de su causa (como la tabla semanal) */
+.report-day.present{background:#dff5ec;color:#16745f}
+.report-day.event{font-weight:700}
