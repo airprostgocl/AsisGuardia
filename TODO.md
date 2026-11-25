@@ -36,8 +36,14 @@ supervisores, empresas y guardias desde el panel de administración.
 
 ### Preparación para empresa grande (+1.200 guardias)
 - [ ] **Importación masiva desde Excel** de guardias y empresas (hoy se cargan de a uno).
-- [ ] **Rendimiento:** cargar solo las marcaciones del período visible (hoy se descarga todo el año) y paginar
-      listas largas (tabla semanal del administrador, reporte «Detalle por fecha» mensual).
+- [ ] **Rendimiento** (la base está bien; falta una capa de optimización, estimado 1–3 días, sin cambiar la UI):
+  - [ ] Cargar solo las marcaciones del período visible y que el servidor entregue totales ya calculados
+        (hoy `operation.snapshot` descarga todo el año y el navegador calcula).
+  - [ ] Ejecutar `ensureOperationalSeed` **una sola vez al iniciar el servidor** (hoy corre en cada snapshot y
+        login: recorre las 21 causas, todas las empresas y todos los guardias con decenas de consultas).
+  - [ ] Agregar índices en la base de datos: `attendance_records (guardId, recordDate)`,
+        `attendance_history (guardId, recordDate)` y `supervisorSites (supervisorId)` (migración).
+  - [ ] Paginar o cargar por partes las listas largas (tabla semanal del administrador, «Detalle por fecha» mensual).
 - [ ] **Varios administradores** (hoy solo el primer supervisor), por ejemplo por zona o jefatura.
 - [ ] Supabase Pro + respaldos activos antes de cargar datos reales.
 - [ ] Contrato de servicio y de tratamiento de datos personales (Ley 21.719).
