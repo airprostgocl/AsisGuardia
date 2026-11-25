@@ -304,3 +304,9 @@ button.side-note b{font-size:13px}
 .guard-company-line svg{color:var(--company-color,#71807b);flex:none}
 .guard-company-line .guard-place{display:inline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .directory-row .guard-open{align-items:flex-start!important;text-align:left!important;justify-content:center}.directory-row .guard-open b,.directory-row .guard-open .guard-company-line{align-self:flex-start;text-align:left}
+/* Barrita de empresa: más delgada y a media altura, centrada a la izquierda de la fila */
+.company-bar,.matrix-scroll td.guard-cell.company-bar,.guard-card.company-bar{box-shadow:none}
+.company-bar{position:relative}
+.company-bar::before{content:"";position:absolute;left:5px;top:25%;height:50%;width:3px;border-radius:3px;background:var(--company-color,#b8c4bf)}
+.matrix-scroll td.guard-cell.company-bar{position:sticky}
+.guard-card.company-bar{padding-left:18px}
