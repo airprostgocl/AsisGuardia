@@ -290,3 +290,17 @@ button.side-note b{font-size:13px}
 .app-shell.sidebar-auto .sidebar:not(.expanded) .side-label{font-size:0;height:1px;background:#2a4a44;margin:10px 6px}
 .app-shell.sidebar-auto .sidebar:not(.expanded) .user{justify-content:center;margin-top:auto}
 @media(max-width:720px){.app-shell.sidebar-auto .main{margin-left:0}}
+
+/* Barra de color por empresa a la izquierda de cada guardia */
+.company-bar{box-shadow:inset 5px 0 0 var(--company-color,#b8c4bf)}
+.matrix-scroll td.guard-cell.company-bar{box-shadow:inset 5px 0 0 var(--company-color,#b8c4bf)}
+.directory-row.company-bar{padding-left:24px}
+.guard-card.company-bar{box-shadow:inset 5px 0 0 var(--company-color,#b8c4bf);padding-left:20px}
+/* Directorio: nombre + empresa clicables, abren Control semanal */
+.guard-open{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:none;border:0;padding:4px 6px;margin:-4px -6px;border-radius:8px;cursor:pointer;font-family:inherit;min-width:0}
+.guard-open:hover{background:#eef7f3}
+.guard-open:hover b{color:#0e6b5b;text-decoration:underline}
+.guard-company-line{display:flex!important;align-items:center;gap:5px;font-size:11px;color:#2f4a42;min-width:0}
+.guard-company-line svg{color:var(--company-color,#71807b);flex:none}
+.guard-company-line .guard-place{display:inline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.directory-row .guard-open{align-items:flex-start!important;text-align:left!important;justify-content:center}.directory-row .guard-open b,.directory-row .guard-open .guard-company-line{align-self:flex-start;text-align:left}

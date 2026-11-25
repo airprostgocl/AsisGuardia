@@ -56,6 +56,9 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
   de vista: cualquier supervisor puede marcar cualquier empresa (así se hacen los reemplazos).
 - Historial de marcaciones: `server/attendanceAudit.ts` y tabla `attendance_history`; solo el administrador
   lo consulta (`supervisors.markAuthors` / `markHistory`). El snapshot no envía `registeredBy` a supervisores.
+- Listas de guardias (tabla semanal, Marcación rápida, Directorio) ordenadas por empresa → punto → nombre
+  (`byCompany`), con barra de color por empresa (`companyColor`, estable por id). En el Directorio, el
+  nombre/empresa abre Control semanal filtrado por el RUT del guardia (`openInWeek`).
 - Ausencias del día: cualquier causa registrada cuenta como 1 (decisión del usuario, incluido medio día).
 - Días administrativos: causa `A` (factor 0, permiso con goce de sueldo), 6 por guardia por **año calendario**
   (`server/adminDays.ts`). Si ya tiene uno ese mes se pide confirmación; al llegar a 6 se **bloquea**
