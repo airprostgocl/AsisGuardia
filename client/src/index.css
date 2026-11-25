@@ -313,3 +313,36 @@ button.side-note b{font-size:13px}
 /* Reporte: presentes en verde claro; ausencias con el color de su causa (como la tabla semanal) */
 .report-day.present{background:#dff5ec;color:#16745f}
 .report-day.event{font-weight:700}
+
+/* Reportes: descargas, selector de vista y vistas nuevas */
+.report-downloads{display:flex;gap:8px;flex-wrap:wrap}
+.report-downloads button{display:inline-flex;align-items:center;gap:7px}
+.report-options{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 20px 4px}
+.report-view-tabs{display:inline-flex;gap:4px;background:#eef3f1;border:1px solid #dce6e1;border-radius:10px;padding:4px;flex-wrap:wrap}
+.report-view-tabs button{border:0;background:none;border-radius:7px;padding:7px 12px;font-size:12px;font-weight:700;color:#4f645d;cursor:pointer;font-family:inherit}
+.report-view-tabs button.selected{background:#0e6b5b;color:#fff;box-shadow:0 2px 6px rgba(14,107,91,.25)}
+.report-group-toggle{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#34473f;cursor:pointer}
+.report-group-toggle input{width:16px;height:16px;accent-color:#0e6b5b}
+.report-empty{margin:18px 4px;font-size:12px;color:#5f716a}
+.report-table td small{display:block;color:#66766f;font-size:10px;margin-top:3px}
+.report-table td small strong{color:#2f4a42}
+.report-table td.company-bar{padding-left:16px}
+.report-group-row td{background:#f1f5f3;border-left:4px solid var(--company-color,#b8c4bf);padding:8px 10px!important;font-size:12px;color:#17362e}
+.report-group-row td svg{vertical-align:-2px;color:var(--company-color)}
+.report-group-row td span{color:#5f716a;font-size:11px;margin-left:6px}
+.report-calendar{min-width:0}
+.report-calendar th{font-size:10px;padding:4px 2px;text-align:center}
+.report-calendar th b,.report-calendar th small{display:block}
+.report-calendar th small{font-weight:600;color:#7d8d87}
+.report-calendar .cal-guard{min-width:190px;text-align:left}
+.report-calendar .cal-cell{padding:3px 1px;text-align:center}
+.cal-present,.cal-event{display:inline-grid;place-items:center;min-width:24px;height:22px;border-radius:5px;font-size:10px;font-weight:800}
+.cal-present{background:#dff5ec;color:#16745f}
+.cal-event{color:#fff}
+.cal-num{text-align:center;font-size:11px;white-space:nowrap}
+.report-summary th{font-size:11px;text-align:center}
+.report-summary th small{display:block;font-weight:500;color:#7d8d87;font-size:9px;max-width:90px;margin:2px auto 0}
+.report-absences td{font-size:11px;vertical-align:middle}
+@media(max-width:720px){.report-options{margin:0 10px 4px}.report-view-tabs{width:100%}.report-view-tabs button{flex:1 1 45%}.report-downloads{width:100%}.report-downloads button{flex:1;justify-content:center}}
+.report-section-title{margin:18px 2px 6px;font-size:13px;font-weight:800;color:#17362e}.report-combined .report-section-title:first-child{margin-top:12px}
+.report-calendar .cal-guard{min-width:200px;max-width:240px}.report-summary td:first-child{min-width:200px}

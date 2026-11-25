@@ -59,6 +59,12 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
 - Listas de guardias (tabla semanal, Marcación rápida, Directorio) ordenadas por empresa → punto → nombre
   (`byCompany`), con barra de color por empresa (`companyColor`, estable por id). En el Directorio, el
   nombre/empresa abre Control semanal filtrado por el RUT del guardia (`openInWeek`).
+- Reportes: dos vistas (`components/ReportViews.tsx`): «Detalle por fecha» (la original) y «Resumen y
+  calendario» (resumen por causa agrupado por empresa con subtotales + calendario de colores). Descargas en
+  Excel (4 hojas, exceljs) y PDF (jspdf + autotable), generadas en el navegador (`lib/reportExport.ts`, carga
+  diferida). Presente = sin causa registrada, abreviado ✓ («P» es Festivo público / oficial).
+- En tablas HTML, la barrita de color va en la **primera celda** (`td.company-bar`), nunca en el `tr`:
+  el `::before` en un `tr` crea una columna fantasma y desalinea las columnas.
 - Ausencias del día: cualquier causa registrada cuenta como 1 (decisión del usuario, incluido medio día).
 - Días administrativos: causa `A` (factor 0, permiso con goce de sueldo), 6 por guardia por **año calendario**
   (`server/adminDays.ts`). Si ya tiene uno ese mes se pide confirmación; al llegar a 6 se **bloquea**
