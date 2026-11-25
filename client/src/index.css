@@ -248,3 +248,16 @@ button.side-note b{font-size:13px}
 [data-sonner-toaster] [data-sonner-toast].gf-toast [data-icon]{color:#fff}
 [data-sonner-toaster] [data-sonner-toast].gf-toast [data-icon] svg{fill:currentColor}
 [data-sonner-toaster] [data-sonner-toast].gf-toast .gf-toast-close{background:#fff;color:#17362e;border-color:rgba(0,0,0,.15)}
+/* Control semanal compacto: título de semana una sola vez; controles en el encabezado de la tabla */
+.hero-compact{margin:26px 0 18px;align-items:center}
+.week-title{display:inline-flex;align-items:center;gap:10px;margin:0!important;font-size:22px;font-weight:800;color:#0e5c4d;background:#e3f4ee;border:1px solid #c5e6da;border-radius:12px;padding:9px 16px;letter-spacing:-.5px}
+.week-title svg{color:#16745f}
+.matrix-head{align-items:flex-start;gap:16px}
+.matrix-head-controls{display:flex;flex-direction:column;gap:9px;min-width:0}
+.matrix-head-controls p{margin:0}
+.period-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.period-controls .date-control{margin-top:0}
+.period-controls .week-strip{margin:0;padding:0}
+.matrix-head .legend{max-width:420px;justify-content:flex-end;padding-top:6px}
+.mobile-only{display:none}
+@media(max-width:720px){.mobile-only{display:flex;margin:-4px 0 18px}.hero-compact{margin:22px 0 12px}.week-title{font-size:17px;padding:8px 12px}}
