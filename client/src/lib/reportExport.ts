@@ -169,8 +169,26 @@ async function renderPdfTables(doc: any, autoTable: any, rows: ReportGuard[], me
         if (!c.present) { data.cell.styles.textColor = 255; data.cell.styles.fontStyle = "bold"; }
       },
     });
-    const y = (doc as any).lastAutoTable.finalY + 14;
-    doc.setFontSize(7); doc.setTextColor(90, 100, 96);
-    doc.text("Celda verde claro = presente. Códigos: " + meta.types.filter(t => rows.some(r => r.cells.some(c => !c.present && c.code === t.code))).map(t => `${t.code} ${t.name}`).join(" · "), 24, y, { maxWidth: 790 });
+    drawPdfLegend(doc, rows, meta, (doc as any).lastAutoTable.finalY + 14);
+  }
+}
+
+/** Leyenda con cuadritos del color de cada causa usada (más «Presente» en verde claro). */
+function drawPdfLegend(doc: any, rows: ReportGuard[], meta: ReportMeta, startY: number) {
+  const colorByCode = new Map<string, string>();
+  for (const r of rows) for (const c of r.cells) if (!c.present && !colorByCode.has(c.code)) colorByCode.set(c.code, c.color);
+  const items: { label: string; fill: [number, number, number] }[] = [{ label: "Presente", fill: [223, 245, 236] }];
+  for (const t of meta.types) if (colorByCode.has(t.code)) items.push({ label: `${t.code} · ${t.name}`, fill: rgb(colorByCode.get(t.code)!) });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const left = 24, right = pageWidth - 24, box = 8, gap = 14;
+  let x = left, y = startY;
+  doc.setFontSize(7);
+  for (const it of items) {
+    const w = box + 4 + doc.getTextWidth(it.label);
+    if (x + w > right) { x = left; y += 13; }
+    doc.setFillColor(...it.fill); doc.setDrawColor(180, 192, 187); doc.setLineWidth(0.4);
+    doc.rect(x, y - box + 1.5, box, box, "FD");
+    doc.setTextColor(60, 70, 66); doc.text(it.label, x + box + 4, y);
+    x += w + gap;
   }
 }
