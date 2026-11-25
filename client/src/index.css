@@ -203,3 +203,15 @@ button.side-note b{font-size:13px}
 .stat-present span{color:#16745f!important;font-weight:700}
 .stat-present b{color:#16745f}
 @media(max-width:720px){.stat-present{padding-left:9px;min-width:62px}}
+/* Selector de día en el encabezado de la tabla semanal */
+.day-pick{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:38px;height:40px;padding:0 6px;border:1.5px solid #4fd0b0;border-radius:7px;background:#fff;cursor:pointer;transition:background .15s,border-color .15s,transform .15s;font-family:inherit}
+.day-pick:hover{background:#eefaf6;transform:translateY(-1px)}
+.day-pick b{font-size:13px;color:#3f544d}
+.day-pick small{font-size:9px;color:#7d8d87;font-weight:600}
+.day-pick.is-today{border-style:dashed}
+.day-pick.selected{background:#0e6b5b;border-color:#0e6b5b;border-style:solid;box-shadow:0 3px 8px rgba(14,107,91,.25)}
+.day-pick.selected b,.day-pick.selected small{color:#fff}
+.matrix-scroll th .day-pick b,.matrix-scroll th .day-pick small{display:block}
+.matrix-scroll th.today b{color:inherit}
+.matrix-scroll th .day-pick b{color:#3f544d}.matrix-scroll th .day-pick.selected b,.matrix-scroll th .day-pick.selected small{color:#fff}
+.matrix-scroll th .day-pick small{font-size:10px;font-weight:800;color:#2f4a42;letter-spacing:.02em}
