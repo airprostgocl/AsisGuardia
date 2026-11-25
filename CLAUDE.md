@@ -49,6 +49,12 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
 - Colores de causas: la UI usa la paleta de categorías (`causeCategory` en `Home.tsx`), no los colores
   de `absence_types` en la base de datos, para que coincidan con la leyenda.
 - Al pedir cambios de diseño, el usuario exige **no tocar procesos** (datos, API, marcaciones).
+- Alcance por supervisor: cada supervisor ve en los listados solo los guardias de las empresas/puntos
+  marcados en «Mis empresas» (`myScope`/`inMyScope` en `Home.tsx`); el administrador ve todo. Es un filtro
+  de vista: cualquier supervisor puede marcar cualquier empresa (así se hacen los reemplazos).
+- Historial de marcaciones: `server/attendanceAudit.ts` y tabla `attendance_history`; solo el administrador
+  lo consulta (`supervisors.markAuthors` / `markHistory`). El snapshot no envía `registeredBy` a supervisores.
+- Ausencias del día: cualquier causa registrada cuenta como 1 (decisión del usuario, incluido medio día).
 
 ## Pruebas locales
 

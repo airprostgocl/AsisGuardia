@@ -4,9 +4,10 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router, supervisorAdminProcedure } from "./_core/trpc";
 import { clientIp, rateLimit } from "./_core/rateLimit";
 import { localSessionCookie, createLocalSession } from "./_core/localAuth";
-import { archiveSite, authenticateSupervisor, clearDemoData, createGuard, createSite, deleteGuard, deleteSite, getOperationalSnapshot, setSiteAssignment, upsertAttendance, updateGuard } from "./db";
+import { archiveSite, authenticateSupervisor, clearDemoData, createGuard, createSite, deleteGuard, deleteSite, getOperationalSnapshot, setSiteAssignment, updateGuard } from "./db";
 import { adminCreateSupervisor, adminResetSupervisorPassword, adminSetSupervisorActive, adminUpdateSupervisor, changeOwnPassword, listSupervisors, MIN_PASSWORD_LENGTH, publicSupervisor, requestPasswordReset, resetPasswordWithToken, updateOwnProfile } from "./supervisorAccounts";
 import { z } from "zod";
+import { listMarkAuthors, listMarkHistory, markAttendanceWithAudit } from "./attendanceAudit";
 import type { Request } from "express";
 
 const emailInput = z.string().trim().email("Correo no válido").nullable().optional().or(z.literal(""));
@@ -43,7 +44,7 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => { const cookieOptions = getSessionCookieOptions(ctx.req); ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 }); ctx.res.clearCookie(localSessionCookie.name,{...localSessionCookie.options,maxAge:0}); return { success: true } as const; }),
   }),
   operation: router({
-    snapshot: protectedProcedure.input(z.object({ start:z.string(), end:z.string() })).query(({ input,ctx }) => getOperationalSnapshot(input.start, input.end, ctx.supervisor?.id)),
+    snapshot: protectedProcedure.input(z.object({ start:z.string(), end:z.string() })).query(async ({ input,ctx }) => { const data = await getOperationalSnapshot(input.start, input.end, ctx.supervisor?.id); if (!data || ctx.supervisor?.isAdmin) return data; return { ...data, records: data.records.map(({ registeredBy, ...r }) => r) }; }),
     createGuard: protectedProcedure.input(z.object({ rut:z.string().min(3), name:z.string().min(2), post:z.string().min(2), companyId:z.number().nullable().optional(), siteId:z.number().nullable().optional(), supervisorId:z.number().nullable().optional(), hireDate:z.string().optional(), annualVacation:z.string().default("15"), vacationUsedBefore:z.string().default("0") })).mutation(({ input,ctx }) => createGuard({...input, supervisorId:ctx.supervisor?.id??null})),
     updateGuard: protectedProcedure.input(z.object({id:z.number(),rut:z.string().min(3),name:z.string().min(2),post:z.string().min(2),companyId:z.number().nullable().optional(),siteId:z.number().nullable().optional(),hireDate:z.string().optional(),annualVacation:z.string().default("15"),vacationUsedBefore:z.string().default("0")})).mutation(({input})=>updateGuard(input.id,input)),
     updateSupervisor: protectedProcedure.input(z.object({ name:z.string().min(2), username:z.string().min(2), email:emailInput })).mutation(({ input, ctx }) => { if (!ctx.supervisor) throw new Error("Supervisor no identificado"); return updateOwnProfile(ctx.supervisor.id, input); }),
@@ -53,13 +54,15 @@ export const appRouter = router({
     deleteSite: protectedProcedure.input(z.object({id:z.number()})).mutation(({input})=>deleteSite(input.id)),
     deleteGuard: protectedProcedure.input(z.object({id:z.number()})).mutation(({input})=>deleteGuard(input.id)),
     clearDemo: protectedProcedure.mutation(()=>clearDemoData()),
-    mark: protectedProcedure.input(z.object({ guardId:z.number(), recordDate:z.string(), absenceTypeId:z.number().nullable(), notes:z.string().optional() })).mutation(({ input }) => upsertAttendance(input)),
+    mark: protectedProcedure.input(z.object({ guardId:z.number(), recordDate:z.string(), absenceTypeId:z.number().nullable(), notes:z.string().optional() })).mutation(({ input, ctx }) => markAttendanceWithAudit(input, ctx.supervisor?.id ?? null)),
   }),
   supervisors: router({
     list: supervisorAdminProcedure.query(() => listSupervisors()),
     create: supervisorAdminProcedure.input(z.object({ name:z.string().min(2), username:z.string().min(2), email:emailInput, temporaryPassword:z.string().min(MIN_PASSWORD_LENGTH) })).mutation(({ input }) => adminCreateSupervisor(input)),
     update: supervisorAdminProcedure.input(z.object({ id:z.number(), name:z.string().min(2), username:z.string().min(2), email:emailInput })).mutation(({ input }) => adminUpdateSupervisor(input.id, input)),
     setActive: supervisorAdminProcedure.input(z.object({ id:z.number(), active:z.boolean() })).mutation(({ input, ctx }) => adminSetSupervisorActive(ctx.supervisor.id, input.id, input.active)),
+    markAuthors: supervisorAdminProcedure.input(z.object({ start:z.string(), end:z.string() })).query(({ input }) => listMarkAuthors(input.start, input.end)),
+    markHistory: supervisorAdminProcedure.input(z.object({ guardId:z.number(), recordDate:z.string() })).query(({ input }) => listMarkHistory(input.guardId, input.recordDate)),
     resetPassword: supervisorAdminProcedure.input(z.object({ id:z.number(), temporaryPassword:z.string().min(MIN_PASSWORD_LENGTH) })).mutation(({ input, ctx }) => adminResetSupervisorPassword(ctx.supervisor.id, input.id, input.temporaryPassword)),
   }),
 });

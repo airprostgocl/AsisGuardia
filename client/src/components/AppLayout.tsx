@@ -94,7 +94,7 @@ export function SupervisorsPanel({ currentId }: { currentId: number }) {
 }
 
 type SitesProps = {
-  sites: any[]; companies: any[]; assignedSiteIds: number[]; savingSite: boolean;
+  isAdmin?: boolean; sites: any[]; companies: any[]; assignedSiteIds: number[]; savingSite: boolean;
   onCreateSite: (x: any) => void; onAssignSite: (siteId: number, assigned: boolean) => void;
   onArchive: (id: number, active: boolean) => void; onDelete: (id: number) => void; onDeleteCompany: (ids: number[], name: string) => void; onClearDemo: () => void;
 };
@@ -113,12 +113,13 @@ function groupByCompany(rows: any[]): CompanyGroup[] {
   return groups.sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
 
-export function SitesPanel({ sites, companies, assignedSiteIds, savingSite, onCreateSite, onAssignSite, onArchive, onDelete, onDeleteCompany, onClearDemo }: SitesProps) {
+export function SitesPanel({ isAdmin = false, sites, companies, assignedSiteIds, savingSite, onCreateSite, onAssignSite, onArchive, onDelete, onDeleteCompany, onClearDemo }: SitesProps) {
   const [company, setCompany] = useState("");
   const [site, setSite] = useState("");
   const activeSites = sites.filter(x => x.active);
   const groups = groupByCompany(activeSites);
-  const registry = groupByCompany(sites);
+  const myCompanyIds = new Set(sites.filter(x => assignedSiteIds.includes(x.id)).map(x => x.companyId));
+  const registry = groupByCompany(isAdmin ? sites : sites.filter(x => myCompanyIds.has(x.companyId)));
   const isAssigned = (x: any) => assignedSiteIds.includes(x.id);
   // Una empresa cuenta como «mía» si tengo la empresa completa o alguno de sus puntos.
   const companyChecked = (g: CompanyGroup) => g.companyRow ? isAssigned(g.companyRow) : g.points.length > 0 && g.points.every(isAssigned);
@@ -152,7 +153,7 @@ export function SitesPanel({ sites, companies, assignedSiteIds, savingSite, onCr
         </div>
 
         <CollapsibleCard className="my-sites-card" title="Mis empresas" summary={`${myCompanies} de ${groups.length} empresas seleccionadas para ti`} defaultOpen={groups.length <= 8}>
-          <p className="admin-help">Marca las empresas que visitas o cubres. Si una empresa tiene puntos de vigilancia, puedes marcar también los puntos específicos.</p>
+          <p className="admin-help">{isAdmin ? "Como administrador ves siempre todas las empresas y guardias. Marca aquí las que supervisas personalmente." : "En los listados solo verás los guardias de las empresas que marques aquí. Para un reemplazo (vacaciones o día libre de un colega), marca su empresa mientras dure y desmárcala al terminar."} Si una empresa tiene puntos de vigilancia, puedes marcar solo algunos.</p>
           <div className="company-list">
             {groups.map(g => (
               <div className={`company-item ${g.allRows.some(isAssigned) ? "is-mine" : ""}`} key={g.key}>

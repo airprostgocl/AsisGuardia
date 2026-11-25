@@ -96,6 +96,18 @@ export const attendanceRecords = pgTable("attendance_records", {
   updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
+/** Historial de cambios de marcación: quién, cuándo y de qué causa a qué causa (solo lo consulta el administrador). */
+export const attendanceHistory = pgTable("attendance_history", {
+  id: serial("id").primaryKey(),
+  guardId: integer("guardId").notNull(),
+  recordDate: date("recordDate").notNull(),
+  previousTypeId: integer("previousTypeId"),
+  previousMarked: boolean("previousMarked").default(false).notNull(),
+  newTypeId: integer("newTypeId"),
+  changedBy: integer("changedBy"),
+  changedAt: timestamp("changedAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Supervisor = typeof supervisors.$inferSelect;

@@ -215,3 +215,16 @@ button.side-note b{font-size:13px}
 .matrix-scroll th.today b{color:inherit}
 .matrix-scroll th .day-pick b{color:#3f544d}.matrix-scroll th .day-pick.selected b,.matrix-scroll th .day-pick.selected small{color:#fff}
 .matrix-scroll th .day-pick small{font-size:10px;font-weight:800;color:#2f4a42;letter-spacing:.02em}
+/* Supervisor sin empresas a cargo */
+.scope-empty{display:flex;align-items:center;gap:14px;background:#fff8ec;border:1px solid #f1d9a8;color:#6b4a12;border-radius:13px;padding:16px 18px;margin:0 0 16px}
+.scope-empty div{flex:1;display:flex;flex-direction:column;gap:4px}
+.scope-empty b{font-size:14px;color:#4d3409}
+.scope-empty span{font-size:12px;line-height:1.45}
+@media(max-width:720px){.scope-empty{flex-wrap:wrap}.scope-empty .primary{width:100%}}
+/* Historial de una casilla (administrador) */
+.mark-history{border-top:1px solid #e5ece9;margin-top:6px;padding:8px 6px 2px;display:grid;gap:6px;max-height:170px;overflow:auto;text-align:left}
+.mark-history-title{display:flex;align-items:center;gap:5px;margin:0;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#5f716a}
+.mark-history small{font-size:10px;color:#7d8d87}
+.mark-history-row{display:grid;gap:1px;padding:5px 7px;border-radius:7px;background:#f5f8f7;font-size:11px;color:#34473f}
+.mark-history-row b{font-size:11px}
+.mark-history{border-top:0;border-bottom:1px solid #e5ece9;margin:0 0 6px;padding:4px 6px 8px;max-height:150px}

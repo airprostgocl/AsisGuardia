@@ -32,6 +32,12 @@ describe("cuentas de supervisor", () => {
     await expect(api.supervisors.setActive({ id: 3, active: false })).rejects.toThrow("Solo el administrador");
   });
 
+  it("solo el administrador puede consultar quién hizo cada marcación", async () => {
+    const api = caller(supervisor({ isAdmin: false }));
+    await expect(api.supervisors.markAuthors({ start: "2026-11-23", end: "2026-11-29" })).rejects.toThrow("Solo el administrador");
+    await expect(api.supervisors.markHistory({ guardId: 1, recordDate: "2026-11-25" })).rejects.toThrow("Solo el administrador");
+  });
+
   it("sin sesión no se puede acceder a la administración", async () => {
     await expect(caller(null).supervisors.list()).rejects.toThrow();
   });
