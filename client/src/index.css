@@ -346,3 +346,5 @@ button.side-note b{font-size:13px}
 @media(max-width:720px){.report-options{margin:0 10px 4px}.report-view-tabs{width:100%}.report-view-tabs button{flex:1 1 45%}.report-downloads{width:100%}.report-downloads button{flex:1;justify-content:center}}
 .report-section-title{margin:18px 2px 6px;font-size:13px;font-weight:800;color:#17362e}.report-combined .report-section-title:first-child{margin-top:12px}
 .report-calendar .cal-guard{min-width:200px;max-width:240px}.report-summary td:first-child{min-width:200px}
+.focus-chip{display:inline-flex;align-items:center;gap:6px;margin-left:6px;background:#0e6b5b;color:#fff;border:0;border-radius:99px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.focus-chip:hover{background:#0a5547}

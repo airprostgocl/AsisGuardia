@@ -58,7 +58,9 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
   lo consulta (`supervisors.markAuthors` / `markHistory`). El snapshot no envía `registeredBy` a supervisores.
 - Listas de guardias (tabla semanal, Marcación rápida, Directorio) ordenadas por empresa → punto → nombre
   (`byCompany`), con barra de color por empresa (`companyColor`, estable por id). En el Directorio, el
-  nombre/empresa abre Control semanal filtrado por el RUT del guardia (`openInWeek`).
+  nombre/empresa abre Control semanal enfocado en ese guardia (`openInWeek` → `focusGuardId`, etiqueta con ✕).
+  El enfoque es temporal: se quita al navegar por el menú, cambiar empresa/punto o buscar. **No** usar el
+  buscador para esto: es compartido por todas las secciones y dejaba la lista filtrada.
 - Reportes: dos vistas (`components/ReportViews.tsx`): «Detalle por fecha» (la original) y «Resumen y
   calendario» (resumen por causa agrupado por empresa con subtotales + calendario de colores). Descargas en
   Excel (4 hojas, exceljs) y PDF (jspdf + autotable), generadas en el navegador (`lib/reportExport.ts`, carga
