@@ -61,19 +61,7 @@ export function ReportViewSwitch({ view, rows, days, types, grouped }: { view: R
 
   if (view === "combined") return <CompactReport rows={rows} days={days} types={types} />;
 
-  if (view === "detail") {
-    return (
-      <div className="report-table-wrap"><table className="report-table"><thead><tr><th>Guardia</th><th>Detalle por fecha</th><th>Pond.</th></tr></thead><tbody>
-        {withGroups(rows, grouped, 3, g => (
-          <tr key={g.id}>
-            <td className="company-bar" style={{ ["--company-color" as any]: g.color }}><GuardLabel g={g} /></td>
-            <td>{g.cells.map(c => <span className={`report-day ${c.present ? "present" : "event"}`} style={c.present ? undefined : { background: c.color, color: "#fff" }} key={c.date}><b>{dayNum(c.date)}</b> {c.code} · {c.name}{c.present ? "" : ` ×${fmt(c.factor)}`}</span>)}</td>
-            <td><b>{g.weighted.toFixed(2)}</b><small>{g.presentDays} presentes · {g.absent} ausencias</small></td>
-          </tr>
-        ))}
-      </tbody></table></div>
-    );
-  }
+  if (view === "detail") return <DetailView rows={rows} grouped={grouped} />;
 
   if (view === "calendar") {
     return (
@@ -147,10 +135,11 @@ function chunkDays<T>(items: T[], size = 10): T[][] {
 }
 
 /**
- * Alto para que el informe termine en el borde inferior de la pantalla (sin desplazar la página).
- * En el celular no se limita: ahí se usa el desplazamiento normal de la página.
+ * Alto de pantalla completa para el área del informe: la página se puede desplazar hasta que el borde
+ * superior de la tabla toca el borde superior de la ventana; desde ahí la tabla ocupa toda la altura
+ * y se recorre con su propia barra. En el celular no se limita (desplazamiento normal de la página).
  */
-function useFitHeight(min = 240) {
+export function useFullScreenHeight(min = 280) {
   const ref = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number | undefined>();
   useEffect(() => {
@@ -158,12 +147,11 @@ function useFitHeight(min = 240) {
       const el = ref.current; if (!el) return;
       if (window.innerWidth <= 720) { setHeight(undefined); return; }
       const rect = el.getBoundingClientRect();
-      const top = rect.top + window.scrollY;
-      const below = document.documentElement.scrollHeight - (rect.bottom + window.scrollY); // relleno bajo el informe
-      setHeight(Math.max(min, window.innerHeight - top - below - 2));
+      const below = document.documentElement.scrollHeight - (rect.bottom + window.scrollY); // espacio bajo la tabla
+      setHeight(Math.max(min, window.innerHeight - below - 6));
     };
     calc();
-    const t = setTimeout(calc, 50);
+    const t = setTimeout(calc, 60);
     window.addEventListener("resize", calc);
     return () => { clearTimeout(t); window.removeEventListener("resize", calc); };
   }, [min]);
@@ -195,7 +183,7 @@ function MiniMap({ g }: { g: ReportGuard }) {
 }
 
 function CompactReport({ rows, days, types }: { rows: ReportGuard[]; days: string[]; types: any[] }) {
-  const { ref, height } = useFitHeight();
+  const { ref, height } = useFullScreenHeight();
   const groups = groupByCompany(rows);
   const total = rows.reduce((a, r) => ({ absent: a.absent + r.absent, weighted: a.weighted + r.weighted }), { absent: 0, weighted: 0 });
   const legend = usedCodes(rows, types).map(t => ({ code: t.code, name: t.name, color: rows.flatMap(r => r.cells).find(c => !c.present && c.code === t.code)?.color || "#999" }));
@@ -209,7 +197,7 @@ function CompactReport({ rows, days, types }: { rows: ReportGuard[]; days: strin
         {legend.map(l => <span key={l.code}><i style={{ background: l.color }} /> {l.code} · {l.name}</span>)}
         <small>Mapa del período por filas: {rangeHint}</small>
       </div>
-      <div className="cr-scroll" ref={ref} style={height ? { maxHeight: height } : undefined}>
+      <div className="cr-scroll report-fullscreen" ref={ref} style={height ? { height } : undefined}>
         {/* Escritorio: tabla */}
         <table className="cr-table">
           <thead><tr><th className="cr-guard">Guardia</th><th>Causas</th><th className="num">Aus.</th><th className="num">Pond.</th><th className="num">Vac. rest.</th><th className="num">Adm.</th><th>Mapa del período</th></tr></thead>
@@ -251,6 +239,24 @@ function CompactReport({ rows, days, types }: { rows: ReportGuard[]; days: strin
           <div className="cr-card-total">Total · {rows.length} guardias · {total.absent} ausencias · {fmt(total.weighted)} días pond.</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** «Detalle por fecha» con la tabla a pantalla completa y desplazamiento propio. */
+function DetailView({ rows, grouped }: { rows: ReportGuard[]; grouped: boolean }) {
+  const { ref, height } = useFullScreenHeight();
+  return (
+    <div className="report-table-wrap report-fullscreen" ref={ref} style={height ? { height } : undefined}>
+      <table className="report-table report-detail"><thead><tr><th>Guardia</th><th>Detalle por fecha</th><th>Pond.</th></tr></thead><tbody>
+        {withGroups(rows, grouped, 3, g => (
+          <tr key={g.id}>
+            <td className="company-bar" style={{ ["--company-color" as any]: g.color }}><GuardLabel g={g} /></td>
+            <td>{g.cells.map(c => <span className={`report-day ${c.present ? "present" : "event"}`} style={c.present ? undefined : { background: c.color, color: "#fff" }} key={c.date}><b>{dayNum(c.date)}</b> {c.code} · {c.name}{c.present ? "" : ` ×${fmt(c.factor)}`}</span>)}</td>
+            <td><b>{g.weighted.toFixed(2)}</b><small>{g.presentDays} presentes · {g.absent} ausencias</small></td>
+          </tr>
+        ))}
+      </tbody></table>
     </div>
   );
 }

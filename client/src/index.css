@@ -428,3 +428,12 @@ button.side-note b{font-size:13px}
 .cr-group td svg{margin-right:4px}
 @media(max-width:720px){.main.main-report{padding-bottom:35px}}
 .cr-group td svg,.report-group-row td svg,.cr-card-group h5 svg{display:inline-block;vertical-align:-2px}
+/* Informes a pantalla completa: la tabla se recorre con su propia barra; títulos fijos */
+.report-fullscreen{overflow:auto;overscroll-behavior:contain;border:1px solid #dce6e1;border-radius:12px;background:#fff;scrollbar-gutter:stable}
+.report-fullscreen::-webkit-scrollbar{width:12px;height:12px}
+.report-fullscreen::-webkit-scrollbar-thumb{background:#9fc9bb;border-radius:8px;border:3px solid #fff}
+.report-fullscreen::-webkit-scrollbar-track{background:#f1f6f4;border-radius:8px}
+.report-detail thead th{position:sticky;top:0;z-index:3;background:#0e6b5b;color:#fff;padding:9px 10px;text-align:left;font-size:11px}
+.report-detail td{padding:8px 10px;vertical-align:top}
+.main-report .report-page .report-table-wrap.report-fullscreen{margin-top:10px}
+.main.main-report{padding-bottom:4px}.main-report .report-page .report-preview{margin-bottom:4px;padding-bottom:4px}.main-report .report-page{margin-bottom:0}

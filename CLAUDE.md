@@ -63,9 +63,12 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
   buscador para esto: es compartido por todas las secciones y dejaba la lista filtrada.
 - Reportes: dos vistas (`components/ReportViews.tsx`): «Detalle por fecha» (la original) y «Resumen y
   calendario» (tabla compacta: chips de causas, Aus./Pond./Vac./Adm. y mini-mapa del período en filas de 10 días;
-  agrupada por empresa, encabezado y total fijos, alto ajustado a la pantalla con `useFitHeight`; en celular, tarjetas). Descargas en
+  agrupada por empresa, encabezado y total fijos, pantalla completa con `useFullScreenHeight`; en celular, tarjetas). Descargas en
   Excel (4 hojas, exceljs) y PDF (jspdf + autotable), generadas en el navegador (`lib/reportExport.ts`, carga
   diferida). Presente = sin causa registrada, abreviado ✓ («P» es Festivo público / oficial).
+- Informes en pantalla (ambas vistas): la página baja hasta que el tope de la tabla toca el borde superior y
+  desde ahí la tabla ocupa toda la pantalla con su propia barra y títulos fijos (`useFullScreenHeight`,
+  clase `report-fullscreen`). En celular no se limita.
 - En tablas HTML, la barrita de color va en la **primera celda** (`td.company-bar`), nunca en el `tr`:
   el `::before` en un `tr` crea una columna fantasma y desalinea las columnas.
 - Ausencias del día: cualquier causa registrada cuenta como 1 (decisión del usuario, incluido medio día).
