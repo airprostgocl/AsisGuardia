@@ -23,6 +23,11 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
 | **Contraseña temporal del supervisor** | La asigna el administrador; se cambia obligatoriamente al primer ingreso | Administrar supervisores |
 | **Token de GitHub** | Reemplaza la contraseña en `git clone` de un repo privado | VPS |
 
+## Pendientes
+
+Ver `TODO.md` → «Pendientes acordados». Modelo de uso: la empresa de seguridad recibe la URL y su supervisor
+administrador lo gestiona todo. Pendientes: feriados de Chile, planificación de turnos, unir a `main`, respaldos.
+
 ## Despliegue (ver DEPLOY.md)
 
 - VPS Hostinger con **Nginx instalado en el sistema** (no Traefik) sirviendo otros sitios y dos n8n.
