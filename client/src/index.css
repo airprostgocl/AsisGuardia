@@ -261,3 +261,10 @@ button.side-note b{font-size:13px}
 .matrix-head .legend{max-width:420px;justify-content:flex-end;padding-top:6px}
 .mobile-only{display:none}
 @media(max-width:720px){.mobile-only{display:flex;margin:-4px 0 18px}.hero-compact{margin:22px 0 12px}.week-title{font-size:17px;padding:8px 12px}}
+/* Título de semana: la mitad de tamaño y más cerca del encabezado */
+.hero-compact{margin:12px 0 14px}
+.week-title{font-size:14px;font-weight:800;gap:7px;padding:6px 11px;border-radius:9px;letter-spacing:-.2px}
+.week-title svg{width:15px;height:15px}
+@media(max-width:720px){.hero-compact{margin:10px 0 10px}.week-title{font-size:13px;padding:5px 10px}}
+.hero-row h2.week-title{font-size:13px;letter-spacing:-.1px;margin:0}
+@media(max-width:720px){.hero-row h2.week-title{font-size:12px}}
