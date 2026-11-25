@@ -268,3 +268,25 @@ button.side-note b{font-size:13px}
 @media(max-width:720px){.hero-compact{margin:10px 0 10px}.week-title{font-size:13px;padding:5px 10px}}
 .hero-row h2.week-title{font-size:13px;letter-spacing:-.1px;margin:0}
 @media(max-width:720px){.hero-row h2.week-title{font-size:12px}}
+
+/* Menú lateral automático: contraído a íconos, se despliega al pasar el cursor */
+.sidebar{transition:width .18s ease,box-shadow .18s ease}
+.main{transition:margin-left .18s ease}
+.brand .sidebar-toggle{margin-left:auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#9fbab3;flex:none}
+.brand .sidebar-toggle:hover{background:#20443d;color:#fff}
+.app-shell.sidebar-auto .main{margin-left:72px}
+.app-shell.sidebar-auto .sidebar{width:72px;padding-left:12px;padding-right:12px;overflow:hidden;z-index:30}
+.app-shell.sidebar-auto .sidebar.expanded{width:244px;padding-left:16px;padding-right:16px;box-shadow:14px 0 34px rgba(16,44,40,.28)}
+.app-shell.sidebar-auto .sidebar .nav-item,.app-shell.sidebar-auto .sidebar .brand{white-space:nowrap}
+.app-shell.sidebar-auto .sidebar:not(.expanded) .brand>span:not(.brand-mark),
+.app-shell.sidebar-auto .sidebar:not(.expanded) .sidebar-toggle,
+.app-shell.sidebar-auto .sidebar:not(.expanded) .nav-item>span,
+.app-shell.sidebar-auto .sidebar:not(.expanded) .nav-badge,
+.app-shell.sidebar-auto .sidebar:not(.expanded) .side-note,
+.app-shell.sidebar-auto .sidebar:not(.expanded) .user>div:not(.avatar),
+.app-shell.sidebar-auto .sidebar:not(.expanded) .logout-mini{display:none}
+.app-shell.sidebar-auto .sidebar:not(.expanded) .brand{padding-left:2px;padding-right:0}
+.app-shell.sidebar-auto .sidebar:not(.expanded) .nav-item{justify-content:center;padding:10px 0}
+.app-shell.sidebar-auto .sidebar:not(.expanded) .side-label{font-size:0;height:1px;background:#2a4a44;margin:10px 6px}
+.app-shell.sidebar-auto .sidebar:not(.expanded) .user{justify-content:center;margin-top:auto}
+@media(max-width:720px){.app-shell.sidebar-auto .main{margin-left:0}}
