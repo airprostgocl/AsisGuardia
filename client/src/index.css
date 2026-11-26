@@ -554,3 +554,8 @@ button.side-note b{font-size:13px}
 @media(max-width:900px){.extras-layout{grid-template-columns:1fr}}
 @media(max-width:600px){.extras-pick-grid{grid-template-columns:1fr}.pick-box .extras-companies,.pick-box .extras-replaced,.pick-empty,.pick-box .extras-warn{height:180px}}
 .extras-companies label.has-absent span{font-weight:800}
+/* Botón para borrar la búsqueda */
+.search{position:relative}
+.search input{padding-right:24px}
+.search-clear{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:99px;display:grid;place-items:center;border:0;background:#e3ebe7;color:#34473f;cursor:pointer}
+.search-clear:hover{background:#0e6b5b;color:#fff}
