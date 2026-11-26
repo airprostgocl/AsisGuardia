@@ -29,6 +29,13 @@
       "when": 1795701957898,
       "tag": "0003_extra_shifts_and_base_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795727364003,
+      "tag": "0004_guard_shift_hours",
+      "breakpoints": true
     }
   ]
 }

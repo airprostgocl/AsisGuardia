@@ -530,3 +530,11 @@ button.side-note b{font-size:13px}
 .extras-chip-rep{font-style:normal;font-weight:700;color:#0e5c4d;margin-left:4px}
 .extras-chip-rep.missing{color:#c0392b}
 .extras-shifts button:disabled{opacity:.4;cursor:not-allowed}.extras-lock{margin:6px 0 0;font-size:11px;color:#0e5c4d;background:#eef7f3;border:1px solid #cfe6dd;border-radius:8px;padding:6px 9px}
+/* Horario del turno en la ficha del guardia: parpadeo suave para llamar la atención */
+.shift-hours{display:flex;align-items:center;gap:6px}
+.shift-hours>span{font-size:12px;color:#5f716a}
+.shift-hours input{flex:1;min-width:0}
+@keyframes gf-blink{0%,100%{border-color:#d3ddd8;box-shadow:0 0 0 0 rgba(14,107,91,0);background:#fbfcfb}50%{border-color:#16a085;box-shadow:0 0 0 3px rgba(22,160,133,.25);background:#effaf6}}
+.blink-time{animation:gf-blink 1.4s ease-in-out infinite;font-weight:700;color:#0e5c4d}
+.blink-time:focus{animation:none}
+@media (prefers-reduced-motion: reduce){.blink-time{animation:none;border-color:#16a085}}

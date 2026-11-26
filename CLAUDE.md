@@ -76,7 +76,9 @@ administrador lo gestiona todo. Pendientes: feriados de Chile, unir a `main`, re
   clase `report-fullscreen`). En celular no se limita.
 - En tablas HTML, la barrita de color va en la **primera celda** (`td.company-bar`), nunca en el `tr`:
   el `::before` en un `tr` crea una columna fantasma y desalinea las columnas.
-- Turnos: Día, Tarde y Noche (sin Rotativo). Cada guardia tiene `baseShift` (turno habitual) en su ficha.
+- Turnos: Día, Tarde y Noche (sin Rotativo). Cada guardia tiene `baseShift` + horario `shiftStart`/`shiftEnd` en su ficha
+  (por defecto Día 08–20, Tarde 14–22, Noche 20–08; editable, con parpadeo). No hay campo «Puesto» (todos «Guardia»).
+  La ventana de Extras carga el turno y horario exacto del ausente.
   Una noche que cruza medianoche pertenece a la **fecha en que empieza**.
 - Días extra (reemplazos): tabla `extra_shifts` (guardia, fecha, turno, inicio, horas, empresa, reemplaza a),
   `server/extraShifts.ts`, ventana `components/ExtrasModal.tsx` (botón «Extras» del Directorio). Bloquea días con

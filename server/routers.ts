@@ -12,6 +12,7 @@ import { adminDayCheck, adminDaysSummary, assertAdminDayAllowed } from "./adminD
 import { listMarkAuthors, listMarkHistory, markAttendanceWithAudit } from "./attendanceAudit";
 import type { Request } from "express";
 
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora no válida (HH:MM)");
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const emailInput = z.string().trim().email("Correo no válido").nullable().optional().or(z.literal(""));
 
@@ -48,8 +49,8 @@ export const appRouter = router({
   }),
   operation: router({
     snapshot: protectedProcedure.input(z.object({ start:z.string(), end:z.string() })).query(async ({ input,ctx }) => { const data = await getOperationalSnapshot(input.start, input.end, ctx.supervisor?.id); if (!data || ctx.supervisor?.isAdmin) return data; return { ...data, records: data.records.map(({ registeredBy, ...r }) => r) }; }),
-    createGuard: protectedProcedure.input(z.object({ rut:z.string().min(3), name:z.string().min(2), post:z.string().min(2), companyId:z.number().nullable().optional(), siteId:z.number().nullable().optional(), supervisorId:z.number().nullable().optional(), hireDate:z.string().optional(), annualVacation:z.string().default("15"), vacationUsedBefore:z.string().default("0"), baseShift:z.enum(BASE_SHIFTS).nullable().optional() })).mutation(({ input,ctx }) => createGuard({...input, supervisorId:ctx.supervisor?.id??null})),
-    updateGuard: protectedProcedure.input(z.object({id:z.number(),rut:z.string().min(3),name:z.string().min(2),post:z.string().min(2),companyId:z.number().nullable().optional(),siteId:z.number().nullable().optional(),hireDate:z.string().optional(),annualVacation:z.string().default("15"),vacationUsedBefore:z.string().default("0"),baseShift:z.enum(BASE_SHIFTS).nullable().optional()})).mutation(({input})=>updateGuard(input.id,input)),
+    createGuard: protectedProcedure.input(z.object({ rut:z.string().min(3), name:z.string().min(2), post:z.string().min(2), companyId:z.number().nullable().optional(), siteId:z.number().nullable().optional(), supervisorId:z.number().nullable().optional(), hireDate:z.string().optional(), annualVacation:z.string().default("15"), vacationUsedBefore:z.string().default("0"), baseShift:z.enum(BASE_SHIFTS).nullable().optional(), shiftStart:hhmm.nullable().optional(), shiftEnd:hhmm.nullable().optional() })).mutation(({ input,ctx }) => createGuard({...input, supervisorId:ctx.supervisor?.id??null})),
+    updateGuard: protectedProcedure.input(z.object({id:z.number(),rut:z.string().min(3),name:z.string().min(2),post:z.string().min(2),companyId:z.number().nullable().optional(),siteId:z.number().nullable().optional(),hireDate:z.string().optional(),annualVacation:z.string().default("15"),vacationUsedBefore:z.string().default("0"),baseShift:z.enum(BASE_SHIFTS).nullable().optional(), shiftStart:hhmm.nullable().optional(), shiftEnd:hhmm.nullable().optional()})).mutation(({input})=>updateGuard(input.id,input)),
     updateSupervisor: protectedProcedure.input(z.object({ name:z.string().min(2), username:z.string().min(2), email:emailInput })).mutation(({ input, ctx }) => { if (!ctx.supervisor) throw new Error("Supervisor no identificado"); return updateOwnProfile(ctx.supervisor.id, input); }),
     createSite: protectedProcedure.input(z.object({companyName:z.string().min(2),siteName:z.string().optional().nullable()})).mutation(({input,ctx})=>createSite(input,ctx.supervisor?.id)),
     setSiteAssignment: protectedProcedure.input(z.object({siteId:z.number(),assigned:z.boolean()})).mutation(({input,ctx})=>{if(!ctx.supervisor)throw new Error("Supervisor no identificado");return setSiteAssignment(ctx.supervisor.id,input.siteId,input.assigned);}),

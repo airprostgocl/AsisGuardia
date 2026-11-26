@@ -8,7 +8,7 @@ export type Shift = (typeof SHIFTS)[number];
 export const BASE_SHIFTS = ["dia", "tarde", "noche"] as const;
 export const SHIFT_DEFAULTS: Record<Shift, { start: string; hours: number; label: string }> = {
   dia: { start: "08:00", hours: 12, label: "Día" },
-  tarde: { start: "15:00", hours: 8, label: "Tarde" },
+  tarde: { start: "14:00", hours: 8, label: "Tarde" },
   noche: { start: "20:00", hours: 12, label: "Noche" },
 };
 /** Descanso mínimo entre turnos antes de advertir (horas). */

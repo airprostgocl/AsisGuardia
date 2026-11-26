@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 type Shift = "dia" | "tarde" | "noche";
 export const SHIFT_INFO: Record<Shift, { label: string; short: string; start: string; hours: number; Icon: typeof Sun }> = {
   dia: { label: "Día", short: "D", start: "08:00", hours: 12, Icon: Sun },
-  tarde: { label: "Tarde", short: "T", start: "15:00", hours: 8, Icon: Sunset },
+  tarde: { label: "Tarde", short: "T", start: "14:00", hours: 8, Icon: Sunset },
   noche: { label: "Noche", short: "N", start: "20:00", hours: 12, Icon: Moon },
 };
 export const endTime = (start: string, hours: number) => { const [h, m] = start.split(":").map(Number); const t = (h * 60 + m + hours * 60) % 1440; return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
@@ -18,7 +18,7 @@ const WEEK = ["L", "M", "X", "J", "V", "S", "D"];
 type Props = {
   guard: { id: number; name: string; baseShift?: string | null };
   companies: { id: number; name: string; active?: boolean }[];
-  guards: { id: number; name: string; baseShift?: string | null }[];
+  guards: { id: number; name: string; baseShift?: string | null; shiftStart?: string | null; shiftEnd?: string | null }[];
   companyOfGuard?: (guardId: number) => string;
   colorFor: (companyId: number) => string;
   initialMonth: Date;
@@ -94,7 +94,17 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
   useEffect(() => { if (replacedId && absentQ.data && !candidates.some(c => c.guardId === replacedId)) setReplacedId(null); }, [candidates, replacedId, absentQ.data]);
   const replacedShift = (candidates.find(c => c.guardId === replacedId)?.baseShift ?? null) as Shift | null;
   const lockedShift = replacedShift && SHIFT_INFO[replacedShift] ? replacedShift : null;
-  useEffect(() => { if (lockedShift && lockedShift !== shift) pickShift(lockedShift); }, [lockedShift]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Al elegir al ausente se cargan su turno y su horario exacto (definidos en su ficha).
+  useEffect(() => {
+    if (!replacedId) return;
+    const r = guards.find(g => g.id === replacedId);
+    if (lockedShift) setShift(lockedShift);
+    if (r?.shiftStart && r?.shiftEnd) {
+      const [sh, sm] = r.shiftStart.split(":").map(Number), [eh, em] = r.shiftEnd.split(":").map(Number);
+      const diff = ((eh * 60 + em) - (sh * 60 + sm) + 1440) % 1440 || 1440;
+      setStartTime(r.shiftStart); setHours(Math.round(diff / 60));
+    } else if (lockedShift) { setStartTime(SHIFT_INFO[lockedShift].start); setHours(SHIFT_INFO[lockedShift].hours); }
+  }, [replacedId, lockedShift]); // eslint-disable-line react-hooks/exhaustive-deps
   const selectedExtras = extras.filter(e => selected.has(e.date) && e.shift === shift);
   const cells: (Date | null)[] = [];
   for (let i = 0; i < ((first.getDay() + 6) % 7); i++) cells.push(null);
@@ -142,10 +152,10 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
               <div className="extras-shifts">
                 {(Object.keys(SHIFT_INFO) as Shift[]).map(s => { const I = SHIFT_INFO[s].Icon; return <button key={s} type="button" className={shift === s ? "sel" : ""} disabled={!!lockedShift && lockedShift !== s} title={lockedShift && lockedShift !== s ? "El extra debe ser del turno del guardia ausente" : undefined} onClick={() => pickShift(s)}><I size={15} /> {SHIFT_INFO[s].label}</button>; })}
               </div>
-              {lockedShift && <p className="extras-lock">Turno del guardia ausente: <b>{SHIFT_INFO[lockedShift].label}</b>. Puedes ajustar la hora de inicio y la duración.</p>}
+              {lockedShift && <p className="extras-lock">Turno del guardia ausente: <b>{SHIFT_INFO[lockedShift].label} {startTime}–{endTime(startTime, hours)}</b>, tomado de su ficha. Puedes ajustarlo si hace falta.</p>}
               <div className="extras-time">
                 <label>Inicio<input type="time" value={startTime} onChange={e => setStartTime(e.target.value || "08:00")} /></label>
-                <label>Duración<select value={hours} onChange={e => setHours(Number(e.target.value))}>{[6, 8, 10, 12, 24].map(h => <option key={h} value={h}>{h} h</option>)}</select></label>
+                <label>Duración<select value={hours} onChange={e => setHours(Number(e.target.value))}>{Array.from({ length: 24 }, (_, i) => i + 1).map(h => <option key={h} value={h}>{h} h</option>)}</select></label>
                 <span>Termina {endTime(startTime, hours)}</span>
               </div>
             </div>

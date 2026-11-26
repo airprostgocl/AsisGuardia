@@ -71,6 +71,8 @@ export const guards = pgTable("guards", {
   siteId: integer("siteId"),
   supervisorId: integer("supervisorId"),
   baseShift: varchar("baseShift", { length: 10 }),
+  shiftStart: varchar("shiftStart", { length: 5 }),
+  shiftEnd: varchar("shiftEnd", { length: 5 }),
   initialVacation: numeric("initialVacation", { precision: 6, scale: 2 }).default("0").notNull(),
   annualVacation: numeric("annualVacation", { precision: 6, scale: 2 }).default("15").notNull(),
   vacationUsedBefore: numeric("vacationUsedBefore", { precision: 6, scale: 2 }).default("0").notNull(),
