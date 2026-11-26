@@ -85,7 +85,8 @@ administrador lo gestiona todo. Pendientes: feriados de Chile, unir a `main`, re
   ausencia propia y horarios superpuestos entre extras; **advierte** (pide confirmar) 24 h seguidas o <8 h de descanso. Se ven en la tabla semanal (D/T/N con color de empresa), reportes, Excel y PDF.
   «Reemplaza a» es **obligatorio** y solo admite guardias **ausentes en todos los días elegidos** (`extras.absentOn`).
   El extra **toma el turno del ausente** (bloqueado si difiere). Si la ausencia ya tiene reemplazo, se advierte y al
-  confirmar se **sustituye** (se quita el extra anterior). **No** se valida el horario normal del propio guardia:
+  confirmar se **sustituye** (se quita el extra anterior). Modificar un extra propio del mismo día y turno (otra empresa u otro
+  reemplazado) también pide confirmación antes de cambiarlo. **No** se valida el horario normal del propio guardia:
   lo conoce el supervisor; solo se bloquea si el guardia tiene ausencia ese día.
 - Reporte «Ausencias y reemplazos» (3ª vista, `buildCoverage` en `ReportViews.tsx`): cruza cada ausencia con los extras
   cuyo «Reemplaza a» es ese guardia ese día → Cubierta / Sin reemplazo, % de cobertura, filtro «Solo sin reemplazo»

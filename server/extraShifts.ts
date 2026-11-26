@@ -128,9 +128,9 @@ export async function assignExtras(input: {
   if (input.replacedGuardId === input.guardId) throw new Error("Un guardia no puede reemplazarse a sí mismo");
   const [replaced] = await db.select({ id: guards.id, name: guards.name, baseShift: guards.baseShift }).from(guards).where(eq(guards.id, input.replacedGuardId)).limit(1);
   if (!replaced) throw new Error("Guardia reemplazado no encontrado");
-  const [guard] = await db.select({ id: guards.id, baseShift: guards.baseShift }).from(guards).where(eq(guards.id, input.guardId)).limit(1);
+  const [guard] = await db.select({ id: guards.id, name: guards.name, baseShift: guards.baseShift }).from(guards).where(eq(guards.id, input.guardId)).limit(1);
   if (!guard) throw new Error("Guardia no encontrado");
-  const [company] = await db.select({ id: companies.id }).from(companies).where(eq(companies.id, input.companyId)).limit(1);
+  const [company] = await db.select({ id: companies.id, name: companies.name }).from(companies).where(eq(companies.id, input.companyId)).limit(1);
   if (!company) throw new Error("Empresa no encontrada");
 
   const from = shiftDay(dates[0], -1), to = shiftDay(dates[dates.length - 1], 1);
@@ -160,6 +160,13 @@ export async function assignExtras(input: {
       pendingWarn = ({ date, reason: `${replaced.name} ya tiene reemplazo ese día (${coveredBy.map(c => `${coverNames.get(c.guardId) ?? "otro guardia"}, ${SHIFT_DEFAULTS[c.shift as Shift]?.label ?? c.shift}`).join("; ")}). Al confirmar, se cambia por el nuevo reemplazante y se quita el extra anterior` });
       pendingRemove = coveredBy.map(c => c.id);
     }
+    // Modificar un extra que el guardia ya tenía ese día en el mismo turno: se pide confirmar.
+    const same = existing.find(e => e.date === date && e.shift === input.shift);
+    let changeWarn: { date: string; reason: string } | null = null;
+    if (same && (same.companyId !== input.companyId || same.replacedGuardId !== input.replacedGuardId)) {
+      const prevCompany = (await db.select({ name: companies.name }).from(companies).where(eq(companies.id, same.companyId)).limit(1))[0]?.name ?? "otra empresa";
+      changeWarn = { date, reason: `${guard.name} ya tiene un extra de ${SHIFT_DEFAULTS[input.shift].label.toLowerCase()} ese día en ${prevCompany}. Al confirmar, se cambia a ${company.name}, reemplazando a ${replaced.name}` };
+    }
     const slot: ShiftSlot = { date, shift: input.shift, startTime: input.startTime, hours: input.hours };
     // El mismo turno de la misma fecha se reasigna (no cuenta como conflicto).
     const others: ShiftSlot[] = [
@@ -172,6 +179,7 @@ export async function assignExtras(input: {
     allowed.push(date);
     toRemove.push(...pendingRemove);
     if (pendingWarn) warnings.push(pendingWarn);
+    if (changeWarn) warnings.push(changeWarn);
     planned.push(slot);
   }
 
