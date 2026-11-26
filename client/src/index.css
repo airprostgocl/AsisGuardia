@@ -553,3 +553,4 @@ button.side-note b{font-size:13px}
 .extras-side>.extras-lock{margin:0}
 @media(max-width:900px){.extras-layout{grid-template-columns:1fr}}
 @media(max-width:600px){.extras-pick-grid{grid-template-columns:1fr}.pick-box .extras-companies,.pick-box .extras-replaced,.pick-empty,.pick-box .extras-warn{height:180px}}
+.extras-companies label.has-absent span{font-weight:800}

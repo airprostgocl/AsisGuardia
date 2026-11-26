@@ -179,15 +179,17 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
                       <input type="radio" name="extras-company" checked={!companyId} onChange={() => pickCompany(null)} />
                       <Building2 size={14} /> <span>Todas las empresas</span>{selDates.length > 0 && <em>{candidates.length}</em>}
                     </label>
-                    {activeCompanies.filter(c => startsWith(c.name, companySearch)).map(c => {
-                      const n = candidates.filter(x => companyIdOfGuard?.(x.guardId) === c.id).length;
-                      return (
-                        <label key={c.id} className={companyId === c.id ? "sel" : ""} style={{ ["--company-color" as any]: colorFor(c.id) }}>
+                    {activeCompanies
+                      .filter(c => startsWith(c.name, companySearch))
+                      .map(c => ({ c, n: candidates.filter(x => companyIdOfGuard?.(x.guardId) === c.id).length }))
+                      // Primero las empresas con ausentes en los días elegidos (más ausentes arriba); luego el resto.
+                      .sort((a, b) => Number(b.n > 0) - Number(a.n > 0) || b.n - a.n || a.c.name.localeCompare(b.c.name, "es"))
+                      .map(({ c, n }) => (
+                        <label key={c.id} className={`${companyId === c.id ? "sel" : ""} ${n > 0 ? "has-absent" : ""}`} style={{ ["--company-color" as any]: colorFor(c.id) }}>
                           <input type="radio" name="extras-company" checked={companyId === c.id} onChange={() => pickCompany(c.id)} />
-                          <Building2 size={14} /> <span>{c.name}</span>{selDates.length > 0 && n > 0 && <em title="Ausentes ese día">{n}</em>}
+                          <Building2 size={14} /> <span>{c.name}</span>{selDates.length > 0 && n > 0 && <em title="Ausentes en los días elegidos">{n}</em>}
                         </label>
-                      );
-                    })}
+                      ))}
                   </div>
                 </div>
               </div>
