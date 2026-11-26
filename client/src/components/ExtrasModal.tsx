@@ -18,14 +18,15 @@ const WEEK = ["L", "M", "X", "J", "V", "S", "D"];
 type Props = {
   guard: { id: number; name: string; baseShift?: string | null };
   companies: { id: number; name: string; active?: boolean }[];
-  guards: { id: number; name: string }[];
+  guards: { id: number; name: string; baseShift?: string | null }[];
+  companyOfGuard?: (guardId: number) => string;
   colorFor: (companyId: number) => string;
   initialMonth: Date;
   onClose: () => void;
 };
 
 /** Ventana para asignar días extra (reemplazos) de un guardia a una o varias empresas, por turno. */
-export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, onClose }: Props) {
+export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, onClose, companyOfGuard }: Props) {
   const utils = trpc.useUtils();
   const [month, setMonth] = useState(() => new Date(initialMonth.getFullYear(), initialMonth.getMonth(), 1));
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -56,7 +57,7 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
   const fmtDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" });
 
   const doAssign = async (confirm = false) => {
-    if (!companyId || !selected.size) return;
+    if (!companyId || !selected.size || !replacedId) return;
     try {
       const r = await assign.mutateAsync({ guardId: guard.id, dates: Array.from(selected), shift, startTime, hours, companyId, replacedGuardId: replacedId, confirm });
       if (r.needsConfirmation) {
@@ -82,6 +83,14 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
     setSelected(next);
   };
 
+  const selDates = useMemo(() => Array.from(selected).sort(), [selected]);
+  const absentQ = trpc.extras.absentOn.useQuery({ dates: selDates }, { enabled: selDates.length > 0 });
+  const candidates = useMemo(() => (absentQ.data ?? [])
+    .filter(a => a.guardId !== guard.id && selDates.every(d => a.absences.some(x => x.date === d)))
+    .map(a => ({ ...a, name: guards.find(g => g.id === a.guardId)?.name ?? "Guardia", baseShift: guards.find(g => g.id === a.guardId)?.baseShift ?? null }))
+    .sort((a, b) => a.name.localeCompare(b.name, "es")), [absentQ.data, selDates, guards, guard.id]);
+  // Si el reemplazado elegido deja de estar ausente en los días elegidos, se limpia.
+  useEffect(() => { if (replacedId && absentQ.data && !candidates.some(c => c.guardId === replacedId)) setReplacedId(null); }, [candidates, replacedId, absentQ.data]);
   const selectedExtras = extras.filter(e => selected.has(e.date) && e.shift === shift);
   const cells: (Date | null)[] = [];
   for (let i = 0; i < ((first.getDay() + 6) % 7); i++) cells.push(null);
@@ -149,15 +158,20 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
             </div>
 
             <div className="extras-block">
-              <h4>Reemplaza a <small>(opcional)</small></h4>
-              <select className="extras-select" value={replacedId ?? ""} onChange={e => setReplacedId(e.target.value ? Number(e.target.value) : null)}>
-                <option value="">— Sin indicar —</option>
-                {guards.filter(g => g.id !== guard.id).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-              </select>
+              <h4>Reemplaza a <small>(obligatorio · guardias ausentes en los días elegidos)</small></h4>
+              {!selDates.length ? <p className="extras-hint">Primero elige los días en el calendario.</p>
+                : absentQ.isLoading ? <p className="extras-hint">Buscando ausentes…</p>
+                : !candidates.length ? <p className="extras-warn">Nadie tiene ausencia registrada en {selDates.length === 1 ? "ese día" : "todos los días elegidos"}. Registra primero la ausencia en Control semanal, o elige días de una misma ausencia.</p>
+                : <div className="extras-replaced">{candidates.map(c => (
+                    <label key={c.guardId} className={replacedId === c.guardId ? "sel" : ""}>
+                      <input type="radio" name="extras-replaced" checked={replacedId === c.guardId} onChange={() => setReplacedId(c.guardId)} />
+                      <span><b>{c.name}</b><small>{companyOfGuard?.(c.guardId) ?? ""}{c.baseShift && SHIFT_INFO[c.baseShift as Shift] ? ` · turno ${SHIFT_INFO[c.baseShift as Shift].label.toLowerCase()}` : ""} · {Array.from(new Set(c.absences.filter(x => selDates.includes(x.date)).map(x => x.label))).join(", ")}</small></span>
+                    </label>
+                  ))}</div>}
             </div>
 
             <div className="extras-actions">
-              <button className="primary" disabled={!companyId || !selected.size || assign.isPending} onClick={() => doAssign()}>
+              <button className="primary" disabled={!companyId || !selected.size || !replacedId || assign.isPending} onClick={() => doAssign()}>
                 {assign.isPending ? "Asignando…" : companyId && selected.size ? `Asignar ${selected.size} día${selected.size === 1 ? "" : "s"} a ${companyName(companyId)}` : "Asignar"}
               </button>
               {selectedExtras.length > 0 && <button className="danger-button" disabled={remove.isPending} onClick={() => { if (window.confirm(`¿Quitar ${selectedExtras.length} extra(s) de ${SHIFT_INFO[shift].label.toLowerCase()} en los días elegidos?`)) { remove.mutate({ ids: selectedExtras.map(e => e.id) }); setSelected(new Set()); } }}><Trash2 size={14} /> Quitar extra de {SHIFT_INFO[shift].label.toLowerCase()}</button>}
@@ -172,8 +186,8 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
             <div key={c.id} className="extras-summary-row" style={{ ["--company-color" as any]: colorFor(c.id) }}>
               <b><Building2 size={13} /> {c.name} <em>{items.length}</em></b>
               <div>{items.map(e => (
-                <span key={e.id} className="extras-chip" title={e.replacedGuardId ? `Reemplaza a ${guards.find(g => g.id === e.replacedGuardId)?.name ?? ""}` : undefined}>
-                  {fmtDay(e.date)} · {SHIFT_INFO[e.shift].label} {e.startTime}–{endTime(e.startTime, e.hours)}
+                <span key={e.id} className="extras-chip">
+                  {fmtDay(e.date)} · {SHIFT_INFO[e.shift].label} {e.startTime}–{endTime(e.startTime, e.hours)}{e.replacedGuardId ? <em className="extras-chip-rep">↔ {guards.find(g => g.id === e.replacedGuardId)?.name ?? "—"}</em> : <em className="extras-chip-rep missing">sin reemplazado</em>}
                   <button aria-label="Quitar" onClick={() => remove.mutate({ ids: [e.id] })}><X size={11} /></button>
                 </span>
               ))}</div>

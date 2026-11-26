@@ -82,6 +82,9 @@ administrador lo gestiona todo. Pendientes: feriados de Chile, planificación de
   `server/extraShifts.ts`, ventana `components/ExtrasModal.tsx` (botón «Extras» del Directorio). Bloquea días con
   ausencia propia y horarios superpuestos; **advierte** (pide confirmar) 24 h seguidas, <8 h de descanso o
   coincidencia con su turno habitual. Se ven en la tabla semanal (D/T/N con color de empresa), reportes, Excel y PDF.
+  «Reemplaza a» es **obligatorio** y solo admite guardias **ausentes en todos los días elegidos** (`extras.absentOn`);
+  el servidor bloquea si el reemplazado no tiene ausencia ese día y advierte si ya tiene reemplazo o si su turno
+  habitual no coincide con el del extra.
 - Reporte «Ausencias y reemplazos» (3ª vista, `buildCoverage` en `ReportViews.tsx`): cruza cada ausencia con los extras
   cuyo «Reemplaza a» es ese guardia ese día → Cubierta / Sin reemplazo, % de cobertura, filtro «Solo sin reemplazo»
   y lista de «Reemplazos sin ausencia registrada». También hoja Excel y PDF.

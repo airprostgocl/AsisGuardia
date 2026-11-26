@@ -7,7 +7,7 @@ import { localSessionCookie, createLocalSession } from "./_core/localAuth";
 import { archiveSite, authenticateSupervisor, clearDemoData, createGuard, createSite, deleteGuard, deleteSite, getOperationalSnapshot, setSiteAssignment, updateGuard } from "./db";
 import { adminCreateSupervisor, adminResetSupervisorPassword, adminSetSupervisorActive, adminUpdateSupervisor, changeOwnPassword, listSupervisors, MIN_PASSWORD_LENGTH, publicSupervisor, requestPasswordReset, resetPasswordWithToken, updateOwnProfile } from "./supervisorAccounts";
 import { z } from "zod";
-import { assignExtras, BASE_SHIFTS, guardExtrasContext, listExtras, removeExtras, SHIFTS } from "./extraShifts";
+import { absentGuards, assignExtras, BASE_SHIFTS, guardExtrasContext, listExtras, removeExtras, SHIFTS } from "./extraShifts";
 import { adminDayCheck, adminDaysSummary, assertAdminDayAllowed } from "./adminDays";
 import { listMarkAuthors, listMarkHistory, markAttendanceWithAudit } from "./attendanceAudit";
 import type { Request } from "express";
@@ -64,8 +64,9 @@ export const appRouter = router({
   extras: router({
     list: protectedProcedure.input(z.object({ start:isoDate, end:isoDate })).query(({ input }) => listExtras(input.start, input.end)),
     forGuard: protectedProcedure.input(z.object({ guardId:z.number(), start:isoDate, end:isoDate })).query(({ input }) => guardExtrasContext(input.guardId, input.start, input.end)),
-    assign: protectedProcedure.input(z.object({ guardId:z.number(), dates:z.array(isoDate).min(1).max(62), shift:z.enum(SHIFTS), startTime:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), hours:z.number().int().min(1).max(24), companyId:z.number(), replacedGuardId:z.number().nullable().optional(), confirm:z.boolean().optional() })).mutation(({ input, ctx }) => assignExtras(input, ctx.supervisor?.id ?? null)),
+    assign: protectedProcedure.input(z.object({ guardId:z.number(), dates:z.array(isoDate).min(1).max(62), shift:z.enum(SHIFTS), startTime:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), hours:z.number().int().min(1).max(24), companyId:z.number(), replacedGuardId:z.number({ message:"Indica a qué guardia ausente reemplaza" }), confirm:z.boolean().optional() })).mutation(({ input, ctx }) => assignExtras(input, ctx.supervisor?.id ?? null)),
     remove: protectedProcedure.input(z.object({ ids:z.array(z.number()).min(1).max(200) })).mutation(({ input }) => removeExtras(input.ids)),
+    absentOn: protectedProcedure.input(z.object({ dates:z.array(isoDate).min(1).max(62) })).query(({ input }) => absentGuards(input.dates)),
   }),
   supervisors: router({
     list: supervisorAdminProcedure.query(() => listSupervisors()),

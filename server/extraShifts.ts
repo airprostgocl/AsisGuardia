@@ -91,6 +91,23 @@ export async function guardExtrasContext(guardId: number, start: string, end: st
   return { extras: rows.map(mapRow), absences };
 }
 
+/** Guardias con ausencia en alguna de las fechas indicadas (candidatos a ser reemplazados). */
+export async function absentGuards(dates: string[]) {
+  const db = await requireDb();
+  if (!dates.length) return [];
+  const rows = await db.select({ guardId: attendanceRecords.guardId, recordDate: attendanceRecords.recordDate, code: absenceTypes.code, name: absenceTypes.name })
+    .from(attendanceRecords)
+    .innerJoin(absenceTypes, eq(absenceTypes.id, attendanceRecords.absenceTypeId))
+    .where(and(inArray(attendanceRecords.recordDate, dates), isNotNull(attendanceRecords.absenceTypeId)));
+  const byGuard = new Map<number, { guardId: number; absences: { date: string; label: string }[] }>();
+  for (const r of rows) {
+    const g = byGuard.get(r.guardId) ?? { guardId: r.guardId, absences: [] };
+    g.absences.push({ date: dayKey(r.recordDate), label: `${r.code} · ${r.name}` });
+    byGuard.set(r.guardId, g);
+  }
+  return Array.from(byGuard.values());
+}
+
 const shiftDay = (date: string, delta: number) => new Date(Date.parse(`${date}T00:00:00Z`) + delta * 86_400_000).toISOString().slice(0, 10);
 
 /**
@@ -100,12 +117,15 @@ const shiftDay = (date: string, delta: number) => new Date(Date.parse(`${date}T0
  */
 export async function assignExtras(input: {
   guardId: number; dates: string[]; shift: Shift; startTime: string; hours: number; companyId: number;
-  replacedGuardId?: number | null; confirm?: boolean;
+  replacedGuardId: number; confirm?: boolean;
 }, createdBy: number | null) {
   const db = await requireDb();
   const dates = Array.from(new Set(input.dates.map(d => d.slice(0, 10)))).sort();
   if (!dates.length) throw new Error("Selecciona al menos un día");
-  if (input.replacedGuardId && input.replacedGuardId === input.guardId) throw new Error("Un guardia no puede reemplazarse a sí mismo");
+  if (!input.replacedGuardId) throw new Error("Indica a qué guardia ausente reemplaza");
+  if (input.replacedGuardId === input.guardId) throw new Error("Un guardia no puede reemplazarse a sí mismo");
+  const [replaced] = await db.select({ id: guards.id, name: guards.name, baseShift: guards.baseShift }).from(guards).where(eq(guards.id, input.replacedGuardId)).limit(1);
+  if (!replaced) throw new Error("Guardia reemplazado no encontrado");
   const [guard] = await db.select({ id: guards.id, baseShift: guards.baseShift }).from(guards).where(eq(guards.id, input.guardId)).limit(1);
   if (!guard) throw new Error("Guardia no encontrado");
   const [company] = await db.select({ id: companies.id }).from(companies).where(eq(companies.id, input.companyId)).limit(1);
@@ -114,6 +134,10 @@ export async function assignExtras(input: {
   const from = shiftDay(dates[0], -1), to = shiftDay(dates[dates.length - 1], 1);
   const { extras: existing, absences } = await guardExtrasContext(input.guardId, from, to);
   const absent = new Map(absences.map(a => [a.date, a.label]));
+  // Ausencias del guardia reemplazado y reemplazos ya existentes para él en esas fechas.
+  const replacedAbs = new Map((await absencesInRange(input.replacedGuardId, dates[0], dates[dates.length - 1])).map(a => [a.date, a.label]));
+  const existingCover = await db.select().from(extraShifts).where(and(eq(extraShifts.replacedGuardId, input.replacedGuardId), inArray(extraShifts.shiftDate, dates)));
+  const coverNames = new Map((await db.select({ id: guards.id, name: guards.name }).from(guards).where(inArray(guards.id, Array.from(new Set(existingCover.map(c => c.guardId))).concat(0)))).map(g => [g.id, g.name]));
   const blocked: { date: string; reason: string }[] = [];
   const warnings: { date: string; reason: string }[] = [];
   const allowed: string[] = [];
@@ -121,6 +145,10 @@ export async function assignExtras(input: {
 
   for (const date of dates) {
     if (absent.has(date)) { blocked.push({ date, reason: `tiene ausencia registrada (${absent.get(date)})` }); continue; }
+    if (!replacedAbs.has(date)) { blocked.push({ date, reason: `${replaced.name} no tiene ausencia registrada ese día: regístrala primero en Control semanal` }); continue; }
+    const coveredBy = existingCover.filter(c => dayKey(c.shiftDate) === date && !(c.guardId === input.guardId && c.shift === input.shift));
+    if (coveredBy.length) warnings.push({ date, reason: `${replaced.name} ya tiene reemplazo ese día (${coveredBy.map(c => `${coverNames.get(c.guardId) ?? "otro guardia"}, ${SHIFT_DEFAULTS[c.shift as Shift]?.label ?? c.shift}`).join("; ")})` });
+    if (replaced.baseShift && replaced.baseShift in SHIFT_DEFAULTS && replaced.baseShift !== input.shift) warnings.push({ date, reason: `${replaced.name} trabaja de ${SHIFT_DEFAULTS[replaced.baseShift as Shift].label.toLowerCase()} y el extra es de ${SHIFT_DEFAULTS[input.shift].label.toLowerCase()}` });
     const slot: ShiftSlot = { date, shift: input.shift, startTime: input.startTime, hours: input.hours };
     // El mismo turno de la misma fecha se reasigna (no cuenta como conflicto).
     const others: ShiftSlot[] = [
@@ -143,8 +171,8 @@ export async function assignExtras(input: {
 
   for (const date of allowed) {
     await db.insert(extraShifts)
-      .values({ guardId: input.guardId, shiftDate: date, shift: input.shift, startTime: input.startTime, hours: input.hours, companyId: input.companyId, replacedGuardId: input.replacedGuardId ?? null, createdBy })
-      .onConflictDoUpdate({ target: [extraShifts.guardId, extraShifts.shiftDate, extraShifts.shift], set: { startTime: input.startTime, hours: input.hours, companyId: input.companyId, replacedGuardId: input.replacedGuardId ?? null, createdBy } });
+      .values({ guardId: input.guardId, shiftDate: date, shift: input.shift, startTime: input.startTime, hours: input.hours, companyId: input.companyId, replacedGuardId: input.replacedGuardId, createdBy })
+      .onConflictDoUpdate({ target: [extraShifts.guardId, extraShifts.shiftDate, extraShifts.shift], set: { startTime: input.startTime, hours: input.hours, companyId: input.companyId, replacedGuardId: input.replacedGuardId, createdBy } });
   }
   return { needsConfirmation: false as const, saved: allowed, blocked, warnings };
 }
