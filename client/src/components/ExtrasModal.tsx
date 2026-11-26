@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import { Building2, ChevronLeft, ChevronRight, Moon, Sun, Sunset, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -14,6 +14,15 @@ export const endTime = (start: string, hours: number) => { const [h, m] = start.
 const pad = (n: number) => String(n).padStart(2, "0");
 const key = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const WEEK = ["L", "M", "X", "J", "V", "S", "D"];
+const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+/** El texto empieza por lo escrito (sin distinguir mayúsculas ni tildes). */
+const startsWith = (text: string, q: string) => !q.trim() || norm(text).startsWith(norm(q.trim()));
+/** Escribir una letra con la caja seleccionada la lleva al buscador de esa caja. */
+function typeAhead(e: ReactKeyboardEvent, set: (v: string) => void, ref: RefObject<HTMLInputElement | null>) {
+  const t = e.target as HTMLInputElement;
+  if (t === ref.current || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || !/\S/.test(e.key)) return;
+  e.preventDefault(); set(e.key); ref.current?.focus();
+}
 
 type Props = {
   guard: { id: number; name: string; baseShift?: string | null };
@@ -36,6 +45,10 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
   const [hours, setHours] = useState(SHIFT_INFO.dia.hours);
   const [companyId, setCompanyId] = useState<number | null>(null);
   const [replacedId, setReplacedId] = useState<number | null>(null);
+  const [companySearch, setCompanySearch] = useState("");
+  const [personSearch, setPersonSearch] = useState("");
+  const companySearchRef = useRef<HTMLInputElement>(null);
+  const personSearchRef = useRef<HTMLInputElement>(null);
 
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
@@ -58,16 +71,17 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
   const fmtDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" });
 
   const doAssign = async (confirm = false) => {
-    if (!companyId || !selected.size || !replacedId) return;
+    const targetCompany = (replacedId ? companyIdOfGuard?.(replacedId) : null) ?? companyId;
+    if (!targetCompany || !selected.size || !replacedId) return;
     try {
-      const r = await assign.mutateAsync({ guardId: guard.id, dates: Array.from(selected), shift, startTime, hours, companyId, replacedGuardId: replacedId, confirm });
+      const r = await assign.mutateAsync({ guardId: guard.id, dates: Array.from(selected), shift, startTime, hours, companyId: targetCompany, replacedGuardId: replacedId, confirm });
       if (r.needsConfirmation) {
         const text = r.warnings.map(w => `• ${fmtDay(w.date)}: ${w.reason}`).join("\n");
         if (window.confirm(`Atención antes de asignar:\n\n${text}\n\n¿Asignar de todos modos?`)) return doAssign(true);
         return;
       }
       if (r.saved.length && r.substituted) toast.info("Reemplazante cambiado", { description: `Se quitó el extra anterior (${r.substituted}) y quedó ${guard.name} como reemplazo.` });
-      if (r.saved.length) toast.success(`${r.saved.length} día${r.saved.length === 1 ? "" : "s"} extra asignado${r.saved.length === 1 ? "" : "s"} a ${companyName(companyId)}`, { description: `${SHIFT_INFO[shift].label} ${startTime}–${endTime(startTime, hours)}` });
+      if (r.saved.length) toast.success(`${r.saved.length} día${r.saved.length === 1 ? "" : "s"} extra asignado${r.saved.length === 1 ? "" : "s"} a ${companyName(targetCompany)}`, { description: `${SHIFT_INFO[shift].label} ${startTime}–${endTime(startTime, hours)}` });
       if (r.blocked.length) toast.error(`${r.blocked.length} día${r.blocked.length === 1 ? "" : "s"} no asignado${r.blocked.length === 1 ? "" : "s"}`, { description: r.blocked.map(b => `${fmtDay(b.date)}: ${b.reason}`).join(" · ") });
       setSelected(new Set());
       setReplacedId(null);
@@ -93,6 +107,11 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
     .sort((a, b) => a.name.localeCompare(b.name, "es")), [absentQ.data, selDates, guards, guard.id]);
   // Si el reemplazado elegido deja de estar ausente en los días elegidos, se limpia.
   useEffect(() => { if (replacedId && absentQ.data && !candidates.some(c => c.guardId === replacedId)) setReplacedId(null); }, [candidates, replacedId, absentQ.data]);
+  const visibleCandidates = candidates.filter(c => (!companyId || companyIdOfGuard?.(c.guardId) === companyId) && startsWith(c.name, personSearch));
+  const pickCompany = (id: number | null) => {
+    setCompanyId(id);
+    if (replacedId && id && companyIdOfGuard?.(replacedId) !== id) setReplacedId(null);
+  };
   const replacedShift = (candidates.find(c => c.guardId === replacedId)?.baseShift ?? null) as Shift | null;
   const lockedShift = replacedShift && SHIFT_INFO[replacedShift] ? replacedShift : null;
   const lockedCompanyId = replacedId ? (companyIdOfGuard?.(replacedId) ?? null) : null;
@@ -150,25 +169,53 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
           </section>
 
           <section className="extras-side">
-            <div className="extras-block">
-              <h4><span className="step">1</span> Reemplaza a <small>(obligatorio · guardias ausentes en los días elegidos)</small></h4>
-              {!selDates.length ? <p className="extras-hint">Primero elige los días en el calendario.</p>
-                : absentQ.isLoading ? <p className="extras-hint">Buscando ausentes…</p>
-                : !candidates.length ? <p className="extras-warn">Nadie tiene ausencia registrada en {selDates.length === 1 ? "ese día" : "todos los días elegidos"}. Registra primero la ausencia en Control semanal, o elige días de una misma ausencia.</p>
-                : <div className="extras-replaced">{candidates.map(c => (
-                    <label key={c.guardId} className={replacedId === c.guardId ? "sel" : ""}>
-                      <input type="radio" name="extras-replaced" checked={replacedId === c.guardId} onChange={() => setReplacedId(c.guardId)} />
-                      <span><b>{c.name}</b><small>{companyOfGuard?.(c.guardId) ?? ""}{c.baseShift && SHIFT_INFO[c.baseShift as Shift] ? ` · turno ${SHIFT_INFO[c.baseShift as Shift].label.toLowerCase()}` : ""} · {Array.from(new Set(c.absences.filter(x => selDates.includes(x.date)).map(x => x.label))).join(", ")}</small></span>
+            <div className="extras-pick-grid">
+              <div className="extras-block">
+                <h4><span className="step">1</span> Empresa <small>filtro</small></h4>
+                <div className="pick-box" onKeyDown={e => typeAhead(e, setCompanySearch, companySearchRef)}>
+                  <input ref={companySearchRef} type="search" className="pick-search" placeholder="Buscar empresa…" value={companySearch} onChange={e => setCompanySearch(e.target.value)} />
+                  <div className="extras-companies">
+                    <label className={!companyId ? "sel" : ""} style={{ ["--company-color" as any]: "#9fb3ab" }}>
+                      <input type="radio" name="extras-company" checked={!companyId} onChange={() => pickCompany(null)} />
+                      <Building2 size={14} /> <span>Todas las empresas</span>{selDates.length > 0 && <em>{candidates.length}</em>}
                     </label>
-                  ))}</div>}
+                    {activeCompanies.filter(c => startsWith(c.name, companySearch)).map(c => {
+                      const n = candidates.filter(x => companyIdOfGuard?.(x.guardId) === c.id).length;
+                      return (
+                        <label key={c.id} className={companyId === c.id ? "sel" : ""} style={{ ["--company-color" as any]: colorFor(c.id) }}>
+                          <input type="radio" name="extras-company" checked={companyId === c.id} onChange={() => pickCompany(c.id)} />
+                          <Building2 size={14} /> <span>{c.name}</span>{selDates.length > 0 && n > 0 && <em title="Ausentes ese día">{n}</em>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="extras-block">
+                <h4><span className="step">2</span> Reemplaza a <small>obligatorio · ausentes</small></h4>
+                <div className="pick-box" onKeyDown={e => typeAhead(e, setPersonSearch, personSearchRef)}>
+                  <input ref={personSearchRef} type="search" className="pick-search" placeholder="Buscar persona…" value={personSearch} onChange={e => setPersonSearch(e.target.value)} disabled={!selDates.length} />
+                  {!selDates.length ? <p className="extras-hint pick-empty">Primero elige los días en el calendario.</p>
+                    : absentQ.isLoading ? <p className="extras-hint pick-empty">Buscando ausentes…</p>
+                    : !candidates.length ? <p className="extras-warn">Nadie tiene ausencia registrada en {selDates.length === 1 ? "ese día" : "todos los días elegidos"}. Registra primero la ausencia en Control semanal, o elige días de una misma ausencia.</p>
+                    : !visibleCandidates.length ? <p className="extras-hint pick-empty">Sin ausentes {companyId ? `en ${companyName(companyId)}` : ""}{personSearch ? ` que empiecen por «${personSearch}»` : ""}.</p>
+                    : <div className="extras-replaced">{visibleCandidates.map(c => (
+                        <label key={c.guardId} className={replacedId === c.guardId ? "sel" : ""} style={{ ["--company-color" as any]: colorFor(companyIdOfGuard?.(c.guardId) ?? 0) }}>
+                          <input type="radio" name="extras-replaced" checked={replacedId === c.guardId} onChange={() => setReplacedId(c.guardId)} />
+                          <span><b>{c.name}</b><small>{companyOfGuard?.(c.guardId) ?? ""}{c.baseShift && SHIFT_INFO[c.baseShift as Shift] ? ` · ${SHIFT_INFO[c.baseShift as Shift].label.toLowerCase()}` : ""} · {Array.from(new Set(c.absences.filter(x => selDates.includes(x.date)).map(x => x.label))).join(", ")}</small></span>
+                        </label>
+                      ))}</div>}
+                </div>
+              </div>
             </div>
+            {lockedCompanyId && <p className="extras-lock">El extra se hace en el puesto del ausente: <b>{companyName(lockedCompanyId)}</b>.</p>}
 
             <div className="extras-block">
-              <h4><span className="step">2</span> Turno y horario</h4>
+              <h4><span className="step">3</span> Turno y horario <small>del ausente</small></h4>
               <div className="extras-shifts">
                 {(Object.keys(SHIFT_INFO) as Shift[]).map(s => { const I = SHIFT_INFO[s].Icon; return <button key={s} type="button" className={shift === s ? "sel" : ""} disabled={!!lockedShift && lockedShift !== s} title={lockedShift && lockedShift !== s ? "El extra debe ser del turno del guardia ausente" : undefined} onClick={() => pickShift(s)}><I size={15} /> {SHIFT_INFO[s].label}</button>; })}
               </div>
-              {lockedShift && <p className="extras-lock">Turno del guardia ausente: <b>{SHIFT_INFO[lockedShift].label} {startTime}–{endTime(startTime, hours)}</b>, tomado de su ficha. Puedes ajustarlo si hace falta.</p>}
               <div className="extras-time">
                 <label>Inicio<input type="time" value={startTime} onChange={e => setStartTime(e.target.value || "08:00")} /></label>
                 <label>Duración<select value={hours} onChange={e => setHours(Number(e.target.value))}>{Array.from({ length: 24 }, (_, i) => i + 1).map(h => <option key={h} value={h}>{h} h</option>)}</select></label>
@@ -176,22 +223,9 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
               </div>
             </div>
 
-            <div className="extras-block">
-              <h4><span className="step">3</span> Empresa <small>{selected.size ? `${selected.size} día${selected.size === 1 ? "" : "s"} elegido${selected.size === 1 ? "" : "s"}` : "elige días en el calendario"}</small></h4>
-              {lockedCompanyId && <p className="extras-lock">Empresa del guardia ausente: <b>{companyName(lockedCompanyId)}</b>. El extra se hace en su puesto.</p>}
-              <div className="extras-companies">
-                {activeCompanies.map(c => (
-                  <label key={c.id} className={companyId === c.id ? "sel" : ""} style={{ ["--company-color" as any]: colorFor(c.id) }}>
-                    <input type="radio" name="extras-company" checked={companyId === c.id} disabled={!!lockedCompanyId && lockedCompanyId !== c.id} onChange={() => setCompanyId(c.id)} />
-                    <Building2 size={14} /> <span>{c.name}</span>{countFor(c.id) > 0 && <em>{countFor(c.id)}</em>}
-                  </label>
-                ))}
-              </div>
-            </div>
-
             <div className="extras-actions">
-              <button className="primary" disabled={!companyId || !selected.size || !replacedId || assign.isPending} onClick={() => doAssign()}>
-                {assign.isPending ? "Asignando…" : companyId && selected.size ? `Asignar ${selected.size} día${selected.size === 1 ? "" : "s"} a ${companyName(companyId)}` : "Asignar"}
+              <button className="primary" disabled={!(lockedCompanyId ?? companyId) || !selected.size || !replacedId || assign.isPending} onClick={() => doAssign()}>
+                {assign.isPending ? "Asignando…" : (lockedCompanyId ?? companyId) && selected.size && replacedId ? `Asignar ${selected.size} día${selected.size === 1 ? "" : "s"} a ${companyName((lockedCompanyId ?? companyId)!)}` : "Asignar"}
               </button>
               {selectedExtras.length > 0 && <button className="danger-button" disabled={remove.isPending} onClick={() => { if (window.confirm(`¿Quitar ${selectedExtras.length} extra(s) de ${SHIFT_INFO[shift].label.toLowerCase()} en los días elegidos?`)) { remove.mutate({ ids: selectedExtras.map(e => e.id) }); setSelected(new Set()); } }}><Trash2 size={14} /> Quitar extra de {SHIFT_INFO[shift].label.toLowerCase()}</button>}
             </div>

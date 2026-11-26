@@ -539,3 +539,17 @@ button.side-note b{font-size:13px}
 .blink-time:focus{animation:none}
 @media (prefers-reduced-motion: reduce){.blink-time{animation:none;border-color:#16a085}}
 .extras-block h4 .step{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:99px;background:#0e6b5b;color:#fff;font-size:10px;margin-right:6px;vertical-align:1px}.extras-companies label:has(input:disabled){opacity:.45;cursor:not-allowed}.extras-companies + .extras-lock,.extras-lock + .extras-companies{margin-top:6px}
+/* Ventana de Extras: cajas de Empresa y Personas lado a lado, con buscador */
+.extras-modal{width:min(1120px,100%)}
+.extras-layout{grid-template-columns:minmax(0,.95fr) minmax(0,1.25fr)}
+.extras-day{min-height:48px}
+.extras-pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pick-box{border:1px solid #dce6e1;border-radius:11px;padding:6px;background:#fbfdfc}
+.pick-search{width:100%;height:32px;border:1px solid #d3ddd8;border-radius:8px;padding:0 9px;font-size:12px;margin-bottom:6px;background:#fff}
+.pick-search:focus{outline:0;border-color:#8dcab9;box-shadow:0 0 0 3px #dff4ec}
+.pick-box .extras-companies,.pick-box .extras-replaced{height:230px;max-height:none;overflow:auto;padding-right:2px;align-content:start}
+.pick-empty,.pick-box .extras-warn{height:230px;margin:0}
+.extras-replaced label{border-left:4px solid var(--company-color,#e1e9e5)}
+.extras-side>.extras-lock{margin:0}
+@media(max-width:900px){.extras-layout{grid-template-columns:1fr}}
+@media(max-width:600px){.extras-pick-grid{grid-template-columns:1fr}.pick-box .extras-companies,.pick-box .extras-replaced,.pick-empty,.pick-box .extras-warn{height:180px}}
