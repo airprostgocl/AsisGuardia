@@ -70,6 +70,7 @@ export const guards = pgTable("guards", {
   companyId: integer("companyId"),
   siteId: integer("siteId"),
   supervisorId: integer("supervisorId"),
+  baseShift: varchar("baseShift", { length: 10 }),
   initialVacation: numeric("initialVacation", { precision: 6, scale: 2 }).default("0").notNull(),
   annualVacation: numeric("annualVacation", { precision: 6, scale: 2 }).default("15").notNull(),
   vacationUsedBefore: numeric("vacationUsedBefore", { precision: 6, scale: 2 }).default("0").notNull(),
@@ -108,12 +109,14 @@ export const attendanceHistory = pgTable("attendance_history", {
   changedAt: timestamp("changedAt").defaultNow().notNull(),
 });
 
-/** Días extra: turnos de reemplazo que hace un guardia en una empresa (día o noche, máx. 2 por fecha). */
+/** Días extra: turnos de reemplazo (día, tarde o noche, con hora de inicio y duración) en una empresa. */
 export const extraShifts = pgTable("extra_shifts", {
   id: serial("id").primaryKey(),
   guardId: integer("guardId").notNull(),
   shiftDate: date("shiftDate").notNull(),
   shift: varchar("shift", { length: 8 }).notNull(),
+  startTime: varchar("startTime", { length: 5 }).notNull(),
+  hours: integer("hours").notNull(),
   companyId: integer("companyId").notNull(),
   replacedGuardId: integer("replacedGuardId"),
   createdBy: integer("createdBy"),

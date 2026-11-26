@@ -76,6 +76,12 @@ administrador lo gestiona todo. Pendientes: feriados de Chile, planificación de
   clase `report-fullscreen`). En celular no se limita.
 - En tablas HTML, la barrita de color va en la **primera celda** (`td.company-bar`), nunca en el `tr`:
   el `::before` en un `tr` crea una columna fantasma y desalinea las columnas.
+- Turnos: Día, Tarde y Noche (sin Rotativo). Cada guardia tiene `baseShift` (turno habitual) en su ficha.
+  Una noche que cruza medianoche pertenece a la **fecha en que empieza**.
+- Días extra (reemplazos): tabla `extra_shifts` (guardia, fecha, turno, inicio, horas, empresa, reemplaza a),
+  `server/extraShifts.ts`, ventana `components/ExtrasModal.tsx` (botón «Extras» del Directorio). Bloquea días con
+  ausencia propia y horarios superpuestos; **advierte** (pide confirmar) 24 h seguidas, <8 h de descanso o
+  coincidencia con su turno habitual. Se ven en la tabla semanal (D/T/N con color de empresa), reportes, Excel y PDF.
 - Ausencias del día: cualquier causa registrada cuenta como 1 (decisión del usuario, incluido medio día).
 - Días administrativos: causa `A` (factor 0, permiso con goce de sueldo), 6 por guardia por **año calendario**
   (`server/adminDays.ts`). Si ya tiene uno ese mes se pide confirmación; al llegar a 6 se **bloquea**

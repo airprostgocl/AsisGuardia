@@ -1,4 +1,4 @@
-import { groupByCompany, usedCodes, type ReportGuard, type ReportView, REPORT_VIEWS } from "@/components/ReportViews";
+import { groupByCompany, usedCodes, SHIFT_LABEL, type ReportGuard, type ReportView, REPORT_VIEWS } from "@/components/ReportViews";
 
 export type ReportMeta = {
   supervisor: string; periodLabel: string; start: string; end: string; days: string[]; types: any[];
@@ -49,16 +49,16 @@ export async function exportExcel(rows: ReportGuard[], meta: ReportMeta) {
 
   // Resumen
   const summary = wb.addWorksheet("Resumen", { views: [{ state: "frozen", ySplit: 6, xSplit: 2 }] });
-  const sumCols = ["Empresa", "Guardia", "RUT", "Punto", ...codes.map(t => `${t.code}\n${t.name}`), "Ausencias", "Días ponderados", "Vacaciones restantes", "Días adm. usados (de 6)"];
+  const sumCols = ["Empresa", "Guardia", "RUT", "Punto", ...codes.map(t => `${t.code}\n${t.name}`), "Ausencias", "Días ponderados", "Vacaciones restantes", "Días adm. usados (de 6)", "Extras día", "Extras tarde", "Extras noche", "Extras total"];
   titleBlock(summary, "Resumen por causa", sumCols.length);
   header(summary, sumCols);
   for (const g of groups) {
     if (meta.grouped) groupRow(summary, `${g.company} · ${g.rows.length} guardias · ${g.absent} ausencias · ${g.weighted.toFixed(2)} días ponderados`, g.color, sumCols.length);
     for (const r of g.rows) {
-      summary.addRow([r.company, r.name, r.rut, r.point ?? "", ...codes.map(t => r.cells.filter(c => !c.present && c.code === t.code).length || null), r.absent, Number(r.weighted.toFixed(2)), Number(r.vacLeft.toFixed(2)), r.adminUsed ?? null]);
+      summary.addRow([r.company, r.name, r.rut, r.point ?? "", ...codes.map(t => r.cells.filter(c => !c.present && c.code === t.code).length || null), r.absent, Number(r.weighted.toFixed(2)), Number(r.vacLeft.toFixed(2)), r.adminUsed ?? null, ...(["dia", "tarde", "noche"] as const).map(s => r.extras.filter(e => e.shift === s).length || null), r.extras.length || null]);
     }
   }
-  const tot = summary.addRow(["TOTAL", `${meta.totals.guards} guardias`, "", "", ...codes.map(t => rows.reduce((n, r) => n + r.cells.filter(c => !c.present && c.code === t.code).length, 0)), meta.totals.absent, Number(meta.totals.weighted.toFixed(2)), null, null]);
+  const tot = summary.addRow(["TOTAL", `${meta.totals.guards} guardias`, "", "", ...codes.map(t => rows.reduce((n, r) => n + r.cells.filter(c => !c.present && c.code === t.code).length, 0)), meta.totals.absent, Number(meta.totals.weighted.toFixed(2)), null, null, ...(["dia", "tarde", "noche"] as const).map(sh => rows.reduce((n, r) => n + r.extras.filter(e => e.shift === sh).length, 0)), rows.reduce((n, r) => n + r.extras.length, 0)]);
   tot.font = { bold: true };
   summary.columns.forEach((col: any, i: number) => { col.width = i === 0 ? 26 : i === 1 ? 26 : i === 3 ? 18 : i === 2 ? 14 : 12; });
 
@@ -98,6 +98,19 @@ export async function exportExcel(rows: ReportGuard[], meta: ReportMeta) {
   [12, 26, 14, 26, 18, 9, 30, 8].forEach((w, i) => { abs.getColumn(i + 1).width = w; });
 
   // Códigos
+  // Extras (reemplazos)
+  const ext = wb.addWorksheet("Extras", { views: [{ state: "frozen", ySplit: 6 }] });
+  const extCols = ["Fecha", "Guardia", "RUT", "Empresa del guardia", "Turno", "Inicio", "Horas", "Empresa donde hizo el extra", "Reemplaza a"];
+  titleBlock(ext, "Días extra (reemplazos)", extCols.length);
+  header(ext, extCols);
+  const extItems = rows.flatMap(r => r.extras.map(e => ({ r, e }))).sort((a, b) => a.e.date.localeCompare(b.e.date) || a.r.name.localeCompare(b.r.name, "es"));
+  for (const { r, e } of extItems) {
+    const row = ext.addRow([e.date, r.name, r.rut, r.company, SHIFT_LABEL[e.shift], e.startTime, e.hours, e.company, e.replaced ?? ""]);
+    row.getCell(8).font = { bold: true, color: { argb: "FF" + hex(e.color) } };
+  }
+  if (!extItems.length) ext.addRow(["Sin días extra en el período."]);
+  [12, 26, 14, 26, 9, 8, 7, 30, 26].forEach((w, i) => { ext.getColumn(i + 1).width = w; });
+
   const leg = wb.addWorksheet("Códigos");
   header(leg, ["Código", "Causa", "Factor de deducción"]);
   leg.addRow(["✓", "Presente", 0]);
@@ -131,10 +144,12 @@ export async function exportPdf(rows: ReportGuard[], meta: ReportMeta, view: Rep
     doc.addPage();
     doc.setFontSize(11); doc.setTextColor(14, 107, 91); doc.text("Calendario del período", 32, 36);
     await renderPdfTables(doc, autoTable, rows, { ...meta, grouped: true }, "calendar", { ...common, startY: 48 }, groupHead);
+    renderPdfExtras(doc, autoTable, rows, common);
     doc.save(`${fileBase(meta)}.pdf`);
     return;
   }
   await renderPdfTables(doc, autoTable, rows, meta, view, common, groupHead);
+  renderPdfExtras(doc, autoTable, rows, common);
   doc.save(`${fileBase(meta)}.pdf`);
 }
 
@@ -142,8 +157,8 @@ async function renderPdfTables(doc: any, autoTable: any, rows: ReportGuard[], me
   const groups = meta.grouped ? groupByCompany(rows) : null;
   if (view === "summary") {
     const codes = usedCodes(rows, meta.types);
-    const head = [["Guardia", "Empresa", ...codes.map(t => t.code), "Aus.", "Pond.", "Vac. rest.", "Adm."]];
-    const line = (r: ReportGuard) => [r.name, r.company + (r.point ? ` · ${r.point}` : ""), ...codes.map(t => String(r.cells.filter(c => !c.present && c.code === t.code).length || "")), String(r.absent), r.weighted.toFixed(2), r.vacLeft.toFixed(1), `${r.adminUsed ?? "—"}/6`];
+    const head = [["Guardia", "Empresa", ...codes.map(t => t.code), "Aus.", "Pond.", "Vac. rest.", "Adm.", "Extras"]];
+    const line = (r: ReportGuard) => [r.name, r.company + (r.point ? ` · ${r.point}` : ""), ...codes.map(t => String(r.cells.filter(c => !c.present && c.code === t.code).length || "")), String(r.absent), r.weighted.toFixed(2), r.vacLeft.toFixed(1), `${r.adminUsed ?? "—"}/6`, r.extras.length ? `${r.extras.length} (${(["dia", "tarde", "noche"] as const).map(sh => [sh, r.extras.filter(e => e.shift === sh).length] as const).filter(x => x[1]).map(x => `${x[0][0].toUpperCase()}${x[1]}`).join(" ")})` : ""];
     const body: any[] = groups ? groups.flatMap(g => [groupHead(g.company, g.rows.length, g.absent, g.weighted, head[0].length, g.color), ...g.rows.map(line)]) : rows.map(line);
     autoTable(doc, { ...common, head, body });
   } else if (view === "absences") {
@@ -191,4 +206,18 @@ function drawPdfLegend(doc: any, rows: ReportGuard[], meta: ReportMeta, startY: 
     doc.setTextColor(60, 70, 66); doc.text(it.label, x + box + 4, y);
     x += w + gap;
   }
+}
+
+/** Página con los días extra (reemplazos) del período, si los hay. */
+function renderPdfExtras(doc: any, autoTable: any, rows: ReportGuard[], common: any) {
+  const items = rows.flatMap(r => r.extras.map(e => ({ r, e }))).sort((a, b) => a.e.date.localeCompare(b.e.date) || a.r.name.localeCompare(b.r.name, "es"));
+  if (!items.length) return;
+  doc.addPage();
+  doc.setFontSize(11); doc.setTextColor(14, 107, 91); doc.text(`Días extra (reemplazos) · ${items.length}`, 32, 36);
+  autoTable(doc, {
+    ...common, startY: 48,
+    head: [["Fecha", "Guardia", "Turno", "Horario", "Empresa donde hizo el extra", "Reemplaza a"]],
+    body: items.map(({ r, e }) => [e.date, r.name, SHIFT_LABEL[e.shift], `${e.startTime} · ${e.hours} h`, e.company, e.replaced ?? ""]),
+    didParseCell: (data: any) => { if (data.section === "body" && data.column.index === 4) { data.cell.styles.textColor = rgb(items[data.row.index].e.color); data.cell.styles.fontStyle = "bold"; } },
+  });
 }

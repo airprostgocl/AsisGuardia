@@ -1,5 +1,5 @@
 {
-  "id": "16f4d88d-541c-4188-85ee-e5cfa37c4997",
+  "id": "a0c08c74-0696-4833-b3c0-c935c90ce1d7",
   "prevId": "cc4334ea-21c8-453b-8c8e-e83b57b1d7cf",
   "version": "7",
   "dialect": "postgresql",
@@ -257,6 +257,18 @@
           "primaryKey": false,
           "notNull": true
         },
+        "startTime": {
+          "name": "startTime",
+          "type": "varchar(5)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hours": {
+          "name": "hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "companyId": {
           "name": "companyId",
           "type": "integer",
@@ -368,6 +380,12 @@
         "supervisorId": {
           "name": "supervisorId",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseShift": {
+          "name": "baseShift",
+          "type": "varchar(10)",
           "primaryKey": false,
           "notNull": false
         },

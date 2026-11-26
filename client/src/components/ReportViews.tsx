@@ -7,7 +7,17 @@ export type ReportCell = { date: string; code: string; name: string; factor: num
 export type ReportGuard = {
   id: number; name: string; rut: string; post: string; company: string; point: string | null; color: string;
   cells: ReportCell[]; weighted: number; absent: number; presentDays: number; vacLeft: number; adminUsed: number | null;
+  extras: ReportExtra[];
 };
+/** Día extra (reemplazo) que hizo el guardia en el período. */
+export type ReportExtra = { date: string; shift: "dia" | "tarde" | "noche"; startTime: string; hours: number; company: string; color: string; replaced: string | null };
+export const SHIFT_SHORT: Record<string, string> = { dia: "D", tarde: "T", noche: "N" };
+export const SHIFT_LABEL: Record<string, string> = { dia: "Día", tarde: "Tarde", noche: "Noche" };
+
+/** Resumen de extras por turno, por ejemplo «D×1 N×2». */
+export function extrasSummary(list: ReportExtra[]) {
+  return (["dia", "tarde", "noche"] as const).map(s => ({ s, n: list.filter(e => e.shift === s).length })).filter(x => x.n);
+}
 export type ReportView = "detail" | "combined" | "calendar" | "summary" | "absences";
 /** Dos formas de ver el informe: el detalle por fecha y el resumen por empresa + calendario de colores. */
 export const REPORT_VIEWS: { id: ReportView; label: string }[] = [
@@ -170,6 +180,15 @@ function CauseChips({ g }: { g: ReportGuard }) {
   return <div className="cr-chips">{list.map(x => <span key={x.code} className="cr-chip" style={{ background: x.color }} title={x.name}>{x.code} ×{x.n}</span>)}</div>;
 }
 
+function ExtrasChips({ g }: { g: ReportGuard }) {
+  if (!g.extras.length) return <span className="cr-none-muted">—</span>;
+  return (
+    <div className="cr-chips">
+      {g.extras.map(e => <span key={`${e.date}-${e.shift}`} className="cr-extra" style={{ borderColor: e.color }} title={`${e.date} · ${SHIFT_LABEL[e.shift]} ${e.startTime} (${e.hours} h) · ${e.company}${e.replaced ? ` · reemplaza a ${e.replaced}` : ""}`}><i style={{ background: e.color }}>{SHIFT_SHORT[e.shift]}</i>{e.date.slice(8)}</span>)}
+    </div>
+  );
+}
+
 function MiniMap({ g }: { g: ReportGuard }) {
   return (
     <div className="cr-map">
@@ -186,6 +205,7 @@ function CompactReport({ rows, days, types }: { rows: ReportGuard[]; days: strin
   const { ref, height } = useFullScreenHeight();
   const groups = groupByCompany(rows);
   const total = rows.reduce((a, r) => ({ absent: a.absent + r.absent, weighted: a.weighted + r.weighted }), { absent: 0, weighted: 0 });
+  const totalExtras = rows.reduce((n, r) => n + r.extras.length, 0);
   const legend = usedCodes(rows, types).map(t => ({ code: t.code, name: t.name, color: rows.flatMap(r => r.cells).find(c => !c.present && c.code === t.code)?.color || "#999" }));
   const first = days[0], last = days[days.length - 1];
   const rangeHint = days.length > 11 ? chunkDays(days).map(r => `${r[0].slice(8)}–${r[r.length - 1].slice(8)}`).join(" · ") : `${first?.slice(8)}–${last?.slice(8)}`;
@@ -200,11 +220,11 @@ function CompactReport({ rows, days, types }: { rows: ReportGuard[]; days: strin
       <div className="cr-scroll report-fullscreen" ref={ref} style={height ? { height } : undefined}>
         {/* Escritorio: tabla */}
         <table className="cr-table">
-          <thead><tr><th className="cr-guard">Guardia</th><th>Causas</th><th className="num">Aus.</th><th className="num">Pond.</th><th className="num">Vac. rest.</th><th className="num">Adm.</th><th>Mapa del período</th></tr></thead>
+          <thead><tr><th className="cr-guard">Guardia</th><th>Causas</th><th className="num">Aus.</th><th className="num">Pond.</th><th className="num">Vac. rest.</th><th className="num">Adm.</th><th>Extras</th><th>Mapa del período</th></tr></thead>
           <tbody>
             {groups.flatMap(g => [
               <tr className="cr-group" key={`g-${g.company}`} style={{ ["--company-color" as any]: g.color }}>
-                <td colSpan={7}><Building2 size={13} /> <b>{g.company}</b><span>{g.rows.length} guardia{g.rows.length === 1 ? "" : "s"} · {g.absent} ausencias · {fmt(g.weighted)} días pond.</span></td>
+                <td colSpan={8}><Building2 size={13} /> <b>{g.company}</b><span>{g.rows.length} guardia{g.rows.length === 1 ? "" : "s"} · {g.absent} ausencias · {fmt(g.weighted)} días pond.</span></td>
               </tr>,
               ...g.rows.map(r => (
                 <tr key={r.id}>
@@ -214,12 +234,13 @@ function CompactReport({ rows, days, types }: { rows: ReportGuard[]; days: strin
                   <td className="num">{fmt(r.weighted)}</td>
                   <td className="num">{fmt(r.vacLeft)}</td>
                   <td className="num">{r.adminUsed ?? "—"}/6</td>
+                  <td><ExtrasChips g={r} /></td>
                   <td><MiniMap g={r} /></td>
                 </tr>
               )),
             ])}
           </tbody>
-          <tfoot><tr><td className="cr-guard">Total · {rows.length} guardias</td><td /><td className="num">{total.absent}</td><td className="num">{fmt(total.weighted)}</td><td /><td /><td /></tr></tfoot>
+          <tfoot><tr><td className="cr-guard">Total · {rows.length} guardias</td><td /><td className="num">{total.absent}</td><td className="num">{fmt(total.weighted)}</td><td /><td /><td>{totalExtras ? `${totalExtras} extras` : ""}</td><td /></tr></tfoot>
         </table>
         {/* Celular: tarjetas */}
         <div className="cr-cards">
@@ -230,7 +251,7 @@ function CompactReport({ rows, days, types }: { rows: ReportGuard[]; days: strin
                 <article key={r.id} className="cr-card company-bar" style={{ ["--company-color" as any]: r.color }}>
                   <div className="cr-card-head"><b>{r.name}</b><small>{r.point || r.company}</small></div>
                   <CauseChips g={r} />
-                  <div className="cr-card-stats"><span><b>{r.absent}</b> aus.</span><span><b>{fmt(r.weighted)}</b> pond.</span><span><b>{fmt(r.vacLeft)}</b> vac.</span><span><b>{r.adminUsed ?? "—"}/6</b> adm.</span></div>
+                  <ExtrasChips g={r} /><div className="cr-card-stats"><span><b>{r.absent}</b> aus.</span><span><b>{fmt(r.weighted)}</b> pond.</span><span><b>{fmt(r.vacLeft)}</b> vac.</span><span><b>{r.adminUsed ?? "—"}/6</b> adm.</span></div>
                   <MiniMap g={r} />
                 </article>
               ))}
@@ -253,7 +274,7 @@ function DetailView({ rows, grouped }: { rows: ReportGuard[]; grouped: boolean }
           <tr key={g.id}>
             <td className="company-bar" style={{ ["--company-color" as any]: g.color }}><GuardLabel g={g} /></td>
             <td>{g.cells.map(c => <span className={`report-day ${c.present ? "present" : "event"}`} style={c.present ? undefined : { background: c.color, color: "#fff" }} key={c.date}><b>{dayNum(c.date)}</b> {c.code} · {c.name}{c.present ? "" : ` ×${fmt(c.factor)}`}</span>)}</td>
-            <td><b>{g.weighted.toFixed(2)}</b><small>{g.presentDays} presentes · {g.absent} ausencias</small></td>
+            <td><b>{g.weighted.toFixed(2)}</b><small>{g.presentDays} presentes · {g.absent} ausencias</small>{g.extras.length > 0 && <small className="rep-extras" title={g.extras.map(e => `${e.date} · ${SHIFT_LABEL[e.shift]} · ${e.company}`).join("\n")}>+ {g.extras.length} extra{g.extras.length === 1 ? "" : "s"} ({extrasSummary(g.extras).map(x => `${SHIFT_SHORT[x.s]}×${x.n}`).join(" ")})</small>}</td>
           </tr>
         ))}
       </tbody></table>
