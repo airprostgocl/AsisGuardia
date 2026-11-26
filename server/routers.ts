@@ -7,6 +7,7 @@ import { localSessionCookie, createLocalSession } from "./_core/localAuth";
 import { archiveSite, authenticateSupervisor, clearDemoData, createGuard, createSite, deleteGuard, deleteSite, getOperationalSnapshot, setSiteAssignment, updateGuard } from "./db";
 import { adminCreateSupervisor, adminResetSupervisorPassword, adminSetSupervisorActive, adminUpdateSupervisor, changeOwnPassword, listSupervisors, MIN_PASSWORD_LENGTH, publicSupervisor, requestPasswordReset, resetPasswordWithToken, updateOwnProfile } from "./supervisorAccounts";
 import { z } from "zod";
+import { assignExtras, listExtras, removeExtras, SHIFTS } from "./extraShifts";
 import { adminDayCheck, adminDaysSummary, assertAdminDayAllowed } from "./adminDays";
 import { listMarkAuthors, listMarkHistory, markAttendanceWithAudit } from "./attendanceAudit";
 import type { Request } from "express";
@@ -58,6 +59,11 @@ export const appRouter = router({
     adminDays: protectedProcedure.input(z.object({ asOf:z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })).query(({ input }) => adminDaysSummary(input.asOf)),
     adminDayCheck: protectedProcedure.input(z.object({ guardId:z.number(), date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })).query(({ input }) => adminDayCheck(input.guardId, input.date)),
     mark: protectedProcedure.input(z.object({ guardId:z.number(), recordDate:z.string(), absenceTypeId:z.number().nullable(), notes:z.string().optional() })).mutation(async ({ input, ctx }) => { await assertAdminDayAllowed(input.guardId, input.recordDate, input.absenceTypeId); return markAttendanceWithAudit(input, ctx.supervisor?.id ?? null); }),
+  }),
+  extras: router({
+    list: protectedProcedure.input(z.object({ start:z.string().regex(/^\d{4}-\d{2}-\d{2}$/), end:z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })).query(({ input }) => listExtras(input.start, input.end)),
+    assign: protectedProcedure.input(z.object({ guardId:z.number(), dates:z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(62), shift:z.enum(SHIFTS), companyId:z.number(), replacedGuardId:z.number().nullable().optional() })).mutation(({ input, ctx }) => assignExtras(input, ctx.supervisor?.id ?? null)),
+    remove: protectedProcedure.input(z.object({ ids:z.array(z.number()).min(1).max(200) })).mutation(({ input }) => removeExtras(input.ids)),
   }),
   supervisors: router({
     list: supervisorAdminProcedure.query(() => listSupervisors()),

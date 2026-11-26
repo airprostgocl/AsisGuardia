@@ -1,4 +1,4 @@
-import { boolean, date, integer, numeric, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, date, integer, numeric, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const userRole = pgEnum("user_role", ["user", "admin"]);
 
@@ -107,6 +107,18 @@ export const attendanceHistory = pgTable("attendance_history", {
   changedBy: integer("changedBy"),
   changedAt: timestamp("changedAt").defaultNow().notNull(),
 });
+
+/** Días extra: turnos de reemplazo que hace un guardia en una empresa (día o noche, máx. 2 por fecha). */
+export const extraShifts = pgTable("extra_shifts", {
+  id: serial("id").primaryKey(),
+  guardId: integer("guardId").notNull(),
+  shiftDate: date("shiftDate").notNull(),
+  shift: varchar("shift", { length: 8 }).notNull(),
+  companyId: integer("companyId").notNull(),
+  replacedGuardId: integer("replacedGuardId"),
+  createdBy: integer("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => [uniqueIndex("extra_shifts_guard_date_shift_unique").on(t.guardId, t.shiftDate, t.shift)]);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
