@@ -529,3 +529,4 @@ button.side-note b{font-size:13px}
 .extras-replaced small{font-size:10px;color:#5f716a}
 .extras-chip-rep{font-style:normal;font-weight:700;color:#0e5c4d;margin-left:4px}
 .extras-chip-rep.missing{color:#c0392b}
+.extras-shifts button:disabled{opacity:.4;cursor:not-allowed}.extras-lock{margin:6px 0 0;font-size:11px;color:#0e5c4d;background:#eef7f3;border:1px solid #cfe6dd;border-radius:8px;padding:6px 9px}

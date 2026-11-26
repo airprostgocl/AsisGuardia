@@ -26,7 +26,7 @@ Nunca decir solo "contraseña" o "clave": se presta a confusión. Usar siempre u
 ## Pendientes
 
 Ver `TODO.md` → «Pendientes acordados». Modelo de uso: la empresa de seguridad recibe la URL y su supervisor
-administrador lo gestiona todo. Pendientes: feriados de Chile, planificación de turnos, unir a `main`, respaldos.
+administrador lo gestiona todo. Pendientes: feriados de Chile, unir a `main`, respaldos (planificación de turnos descartada).
 
 ## Despliegue (ver DEPLOY.md)
 
@@ -80,11 +80,11 @@ administrador lo gestiona todo. Pendientes: feriados de Chile, planificación de
   Una noche que cruza medianoche pertenece a la **fecha en que empieza**.
 - Días extra (reemplazos): tabla `extra_shifts` (guardia, fecha, turno, inicio, horas, empresa, reemplaza a),
   `server/extraShifts.ts`, ventana `components/ExtrasModal.tsx` (botón «Extras» del Directorio). Bloquea días con
-  ausencia propia y horarios superpuestos; **advierte** (pide confirmar) 24 h seguidas, <8 h de descanso o
-  coincidencia con su turno habitual. Se ven en la tabla semanal (D/T/N con color de empresa), reportes, Excel y PDF.
-  «Reemplaza a» es **obligatorio** y solo admite guardias **ausentes en todos los días elegidos** (`extras.absentOn`);
-  el servidor bloquea si el reemplazado no tiene ausencia ese día y advierte si ya tiene reemplazo o si su turno
-  habitual no coincide con el del extra.
+  ausencia propia y horarios superpuestos entre extras; **advierte** (pide confirmar) 24 h seguidas o <8 h de descanso. Se ven en la tabla semanal (D/T/N con color de empresa), reportes, Excel y PDF.
+  «Reemplaza a» es **obligatorio** y solo admite guardias **ausentes en todos los días elegidos** (`extras.absentOn`).
+  El extra **toma el turno del ausente** (bloqueado si difiere). Si la ausencia ya tiene reemplazo, se advierte y al
+  confirmar se **sustituye** (se quita el extra anterior). **No** se valida el horario normal del propio guardia:
+  lo conoce el supervisor; solo se bloquea si el guardia tiene ausencia ese día.
 - Reporte «Ausencias y reemplazos» (3ª vista, `buildCoverage` en `ReportViews.tsx`): cruza cada ausencia con los extras
   cuyo «Reemplaza a» es ese guardia ese día → Cubierta / Sin reemplazo, % de cobertura, filtro «Solo sin reemplazo»
   y lista de «Reemplazos sin ausencia registrada». También hoja Excel y PDF.

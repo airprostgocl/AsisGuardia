@@ -65,6 +65,7 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
         if (window.confirm(`Atención antes de asignar:\n\n${text}\n\n¿Asignar de todos modos?`)) return doAssign(true);
         return;
       }
+      if (r.saved.length && r.substituted) toast.info("Reemplazante cambiado", { description: `Se quitó el extra anterior (${r.substituted}) y quedó ${guard.name} como reemplazo.` });
       if (r.saved.length) toast.success(`${r.saved.length} día${r.saved.length === 1 ? "" : "s"} extra asignado${r.saved.length === 1 ? "" : "s"} a ${companyName(companyId)}`, { description: `${SHIFT_INFO[shift].label} ${startTime}–${endTime(startTime, hours)}` });
       if (r.blocked.length) toast.error(`${r.blocked.length} día${r.blocked.length === 1 ? "" : "s"} no asignado${r.blocked.length === 1 ? "" : "s"}`, { description: r.blocked.map(b => `${fmtDay(b.date)}: ${b.reason}`).join(" · ") });
       setSelected(new Set());
@@ -91,6 +92,9 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
     .sort((a, b) => a.name.localeCompare(b.name, "es")), [absentQ.data, selDates, guards, guard.id]);
   // Si el reemplazado elegido deja de estar ausente en los días elegidos, se limpia.
   useEffect(() => { if (replacedId && absentQ.data && !candidates.some(c => c.guardId === replacedId)) setReplacedId(null); }, [candidates, replacedId, absentQ.data]);
+  const replacedShift = (candidates.find(c => c.guardId === replacedId)?.baseShift ?? null) as Shift | null;
+  const lockedShift = replacedShift && SHIFT_INFO[replacedShift] ? replacedShift : null;
+  useEffect(() => { if (lockedShift && lockedShift !== shift) pickShift(lockedShift); }, [lockedShift]); // eslint-disable-line react-hooks/exhaustive-deps
   const selectedExtras = extras.filter(e => selected.has(e.date) && e.shift === shift);
   const cells: (Date | null)[] = [];
   for (let i = 0; i < ((first.getDay() + 6) % 7); i++) cells.push(null);
@@ -136,8 +140,9 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
             <div className="extras-block">
               <h4>Turno</h4>
               <div className="extras-shifts">
-                {(Object.keys(SHIFT_INFO) as Shift[]).map(s => { const I = SHIFT_INFO[s].Icon; return <button key={s} type="button" className={shift === s ? "sel" : ""} onClick={() => pickShift(s)}><I size={15} /> {SHIFT_INFO[s].label}</button>; })}
+                {(Object.keys(SHIFT_INFO) as Shift[]).map(s => { const I = SHIFT_INFO[s].Icon; return <button key={s} type="button" className={shift === s ? "sel" : ""} disabled={!!lockedShift && lockedShift !== s} title={lockedShift && lockedShift !== s ? "El extra debe ser del turno del guardia ausente" : undefined} onClick={() => pickShift(s)}><I size={15} /> {SHIFT_INFO[s].label}</button>; })}
               </div>
+              {lockedShift && <p className="extras-lock">Turno del guardia ausente: <b>{SHIFT_INFO[lockedShift].label}</b>. Puedes ajustar la hora de inicio y la duración.</p>}
               <div className="extras-time">
                 <label>Inicio<input type="time" value={startTime} onChange={e => setStartTime(e.target.value || "08:00")} /></label>
                 <label>Duración<select value={hours} onChange={e => setHours(Number(e.target.value))}>{[6, 8, 10, 12, 24].map(h => <option key={h} value={h}>{h} h</option>)}</select></label>

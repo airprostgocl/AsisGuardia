@@ -30,8 +30,8 @@ supervisores, empresas y guardias desde el panel de administración.
 - [ ] **Feriados de Chile** (punto 3 del análisis): precargar feriados (incluidos irrenunciables), mostrarlos
       en la tabla y descontarlos del cálculo de vacaciones. Definir reglas antes de implementar.
 - [x] **Días extra (reemplazos)** con turnos Día/Tarde/Noche, hora de inicio y duración; turno habitual por guardia.
-- [ ] **Planificación de turnos** (punto 5 del análisis): turnos 4×4, 7×7, 5×2, 12 h; calendario de quién debe
-      estar en cada puesto y alerta de puesto sin cubrir. Definir reglas antes de implementar.
+- [~] ~~**Planificación de turnos** (punto 5)~~ — **descartado** (nov 2026): no se registran horarios ni días de
+      trabajo; los conoce el supervisor de cada empresa. La app solo bloquea extras en días con ausencia propia.
 - [ ] **Unir todo a `main`** (hoy en la rama `claude/busy-dirac-f169b6`) y cambiar el VPS a `main`.
 - [ ] **Activar respaldos** de la base de datos Supabase (definir método y frecuencia).
 

@@ -113,7 +113,9 @@ const shiftDay = (date: string, delta: number) => new Date(Date.parse(`${date}T0
 /**
  * Asigna (o reasigna) días extra a una empresa en un turno.
  * - Bloquea: días con ausencia propia y turnos que se superponen con otros extras.
- * - Advierte (requiere `confirm`): 24 h seguidas, menos de 8 h de descanso o coincidencia con su turno habitual.
+ * - Bloquea también si el turno no es el del guardia ausente.
+ * - Advierte (requiere `confirm`): 24 h seguidas, menos de 8 h de descanso, o ausencia ya cubierta (al confirmar,
+ *   se sustituye al reemplazante anterior). El horario normal del propio guardia no se valida: lo conoce el supervisor.
  */
 export async function assignExtras(input: {
   guardId: number; dates: string[]; shift: Shift; startTime: string; hours: number; companyId: number;
@@ -141,14 +143,23 @@ export async function assignExtras(input: {
   const blocked: { date: string; reason: string }[] = [];
   const warnings: { date: string; reason: string }[] = [];
   const allowed: string[] = [];
+  const toRemove: number[] = []; // extras de reemplazantes anteriores que se sustituyen
   const planned: ShiftSlot[] = [];
 
   for (const date of dates) {
+    let pendingRemove: number[] = [];
+    let pendingWarn: { date: string; reason: string } | null = null;
     if (absent.has(date)) { blocked.push({ date, reason: `tiene ausencia registrada (${absent.get(date)})` }); continue; }
     if (!replacedAbs.has(date)) { blocked.push({ date, reason: `${replaced.name} no tiene ausencia registrada ese día: regístrala primero en Control semanal` }); continue; }
+    if (replaced.baseShift && replaced.baseShift in SHIFT_DEFAULTS && replaced.baseShift !== input.shift) {
+      blocked.push({ date, reason: `${replaced.name} trabaja de ${SHIFT_DEFAULTS[replaced.baseShift as Shift].label.toLowerCase()}: el extra debe ser de ${SHIFT_DEFAULTS[replaced.baseShift as Shift].label.toLowerCase()}` });
+      continue;
+    }
     const coveredBy = existingCover.filter(c => dayKey(c.shiftDate) === date && !(c.guardId === input.guardId && c.shift === input.shift));
-    if (coveredBy.length) warnings.push({ date, reason: `${replaced.name} ya tiene reemplazo ese día (${coveredBy.map(c => `${coverNames.get(c.guardId) ?? "otro guardia"}, ${SHIFT_DEFAULTS[c.shift as Shift]?.label ?? c.shift}`).join("; ")})` });
-    if (replaced.baseShift && replaced.baseShift in SHIFT_DEFAULTS && replaced.baseShift !== input.shift) warnings.push({ date, reason: `${replaced.name} trabaja de ${SHIFT_DEFAULTS[replaced.baseShift as Shift].label.toLowerCase()} y el extra es de ${SHIFT_DEFAULTS[input.shift].label.toLowerCase()}` });
+    if (coveredBy.length) {
+      pendingWarn = ({ date, reason: `${replaced.name} ya tiene reemplazo ese día (${coveredBy.map(c => `${coverNames.get(c.guardId) ?? "otro guardia"}, ${SHIFT_DEFAULTS[c.shift as Shift]?.label ?? c.shift}`).join("; ")}). Al confirmar, se cambia por el nuevo reemplazante y se quita el extra anterior` });
+      pendingRemove = coveredBy.map(c => c.id);
+    }
     const slot: ShiftSlot = { date, shift: input.shift, startTime: input.startTime, hours: input.hours };
     // El mismo turno de la misma fecha se reasigna (no cuenta como conflicto).
     const others: ShiftSlot[] = [
@@ -158,23 +169,22 @@ export async function assignExtras(input: {
     const res = checkSlot(slot, others);
     if (res.blocked.length) { blocked.push({ date, reason: res.blocked[0] }); continue; }
     res.warnings.forEach(w => warnings.push({ date, reason: w }));
-    if (guard.baseShift && guard.baseShift in SHIFT_DEFAULTS) {
-      const base: ShiftSlot = { date, shift: guard.baseShift as Shift, startTime: SHIFT_DEFAULTS[guard.baseShift as Shift].start, hours: SHIFT_DEFAULTS[guard.baseShift as Shift].hours };
-      const bi = interval(base), si = interval(slot);
-      if (si.start < bi.end && bi.start < si.end) warnings.push({ date, reason: `coincide con su turno habitual de ${SHIFT_DEFAULTS[base.shift].label.toLowerCase()}: confirma que ese día lo tiene libre` });
-    }
     allowed.push(date);
+    toRemove.push(...pendingRemove);
+    if (pendingWarn) warnings.push(pendingWarn);
     planned.push(slot);
   }
 
   if (warnings.length && !input.confirm) return { needsConfirmation: true as const, saved: [] as string[], blocked, warnings };
 
+  // Sustitución: se quitan los extras del reemplazante anterior (p. ej. no se presentó).
+  if (toRemove.length) await db.delete(extraShifts).where(inArray(extraShifts.id, toRemove));
   for (const date of allowed) {
     await db.insert(extraShifts)
       .values({ guardId: input.guardId, shiftDate: date, shift: input.shift, startTime: input.startTime, hours: input.hours, companyId: input.companyId, replacedGuardId: input.replacedGuardId, createdBy })
       .onConflictDoUpdate({ target: [extraShifts.guardId, extraShifts.shiftDate, extraShifts.shift], set: { startTime: input.startTime, hours: input.hours, companyId: input.companyId, replacedGuardId: input.replacedGuardId, createdBy } });
   }
-  return { needsConfirmation: false as const, saved: allowed, blocked, warnings };
+  return { needsConfirmation: false as const, saved: allowed, blocked, warnings, substituted: toRemove.length };
 }
 
 /** Elimina días extra por id. */
