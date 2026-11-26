@@ -538,3 +538,4 @@ button.side-note b{font-size:13px}
 .blink-time{animation:gf-blink 1.4s ease-in-out infinite;font-weight:700;color:#0e5c4d}
 .blink-time:focus{animation:none}
 @media (prefers-reduced-motion: reduce){.blink-time{animation:none;border-color:#16a085}}
+.extras-block h4 .step{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:99px;background:#0e6b5b;color:#fff;font-size:10px;margin-right:6px;vertical-align:1px}.extras-companies label:has(input:disabled){opacity:.45;cursor:not-allowed}.extras-companies + .extras-lock,.extras-lock + .extras-companies{margin-top:6px}

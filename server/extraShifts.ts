@@ -1,5 +1,5 @@
 import { and, asc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
-import { absenceTypes, attendanceRecords, companies, extraShifts, guards } from "../drizzle/schema";
+import { absenceTypes, attendanceRecords, companies, extraShifts, guards, sites } from "../drizzle/schema";
 import { getDb } from "./db";
 
 /** Turnos: día, tarde y noche. Cada extra guarda su hora de inicio y duración reales. */
@@ -126,8 +126,15 @@ export async function assignExtras(input: {
   if (!dates.length) throw new Error("Selecciona al menos un día");
   if (!input.replacedGuardId) throw new Error("Indica a qué guardia ausente reemplaza");
   if (input.replacedGuardId === input.guardId) throw new Error("Un guardia no puede reemplazarse a sí mismo");
-  const [replaced] = await db.select({ id: guards.id, name: guards.name, baseShift: guards.baseShift }).from(guards).where(eq(guards.id, input.replacedGuardId)).limit(1);
+  const [replaced] = await db.select({ id: guards.id, name: guards.name, baseShift: guards.baseShift, companyId: guards.companyId, siteId: guards.siteId }).from(guards).where(eq(guards.id, input.replacedGuardId)).limit(1);
   if (!replaced) throw new Error("Guardia reemplazado no encontrado");
+  // El extra se hace en el puesto del ausente: misma empresa.
+  let replacedCompanyId = replaced.companyId;
+  if (!replacedCompanyId && replaced.siteId) replacedCompanyId = (await db.select({ companyId: sites.companyId }).from(sites).where(eq(sites.id, replaced.siteId)).limit(1))[0]?.companyId ?? null;
+  if (replacedCompanyId && replacedCompanyId !== input.companyId) {
+    const name = (await db.select({ name: companies.name }).from(companies).where(eq(companies.id, replacedCompanyId)).limit(1))[0]?.name ?? "su empresa";
+    throw new Error(`${replaced.name} trabaja en ${name}: el extra debe hacerse en esa empresa`);
+  }
   const [guard] = await db.select({ id: guards.id, name: guards.name, baseShift: guards.baseShift }).from(guards).where(eq(guards.id, input.guardId)).limit(1);
   if (!guard) throw new Error("Guardia no encontrado");
   const [company] = await db.select({ id: companies.id, name: companies.name }).from(companies).where(eq(companies.id, input.companyId)).limit(1);

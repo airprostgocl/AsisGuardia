@@ -20,13 +20,14 @@ type Props = {
   companies: { id: number; name: string; active?: boolean }[];
   guards: { id: number; name: string; baseShift?: string | null; shiftStart?: string | null; shiftEnd?: string | null }[];
   companyOfGuard?: (guardId: number) => string;
+  companyIdOfGuard?: (guardId: number) => number | null;
   colorFor: (companyId: number) => string;
   initialMonth: Date;
   onClose: () => void;
 };
 
 /** Ventana para asignar días extra (reemplazos) de un guardia a una o varias empresas, por turno. */
-export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, onClose, companyOfGuard }: Props) {
+export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, onClose, companyOfGuard, companyIdOfGuard }: Props) {
   const utils = trpc.useUtils();
   const [month, setMonth] = useState(() => new Date(initialMonth.getFullYear(), initialMonth.getMonth(), 1));
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -94,6 +95,8 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
   useEffect(() => { if (replacedId && absentQ.data && !candidates.some(c => c.guardId === replacedId)) setReplacedId(null); }, [candidates, replacedId, absentQ.data]);
   const replacedShift = (candidates.find(c => c.guardId === replacedId)?.baseShift ?? null) as Shift | null;
   const lockedShift = replacedShift && SHIFT_INFO[replacedShift] ? replacedShift : null;
+  const lockedCompanyId = replacedId ? (companyIdOfGuard?.(replacedId) ?? null) : null;
+  useEffect(() => { if (lockedCompanyId) setCompanyId(lockedCompanyId); }, [lockedCompanyId]);
   // Al elegir al ausente se cargan su turno y su horario exacto (definidos en su ficha).
   useEffect(() => {
     if (!replacedId) return;
@@ -148,7 +151,20 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
 
           <section className="extras-side">
             <div className="extras-block">
-              <h4>Turno</h4>
+              <h4><span className="step">1</span> Reemplaza a <small>(obligatorio · guardias ausentes en los días elegidos)</small></h4>
+              {!selDates.length ? <p className="extras-hint">Primero elige los días en el calendario.</p>
+                : absentQ.isLoading ? <p className="extras-hint">Buscando ausentes…</p>
+                : !candidates.length ? <p className="extras-warn">Nadie tiene ausencia registrada en {selDates.length === 1 ? "ese día" : "todos los días elegidos"}. Registra primero la ausencia en Control semanal, o elige días de una misma ausencia.</p>
+                : <div className="extras-replaced">{candidates.map(c => (
+                    <label key={c.guardId} className={replacedId === c.guardId ? "sel" : ""}>
+                      <input type="radio" name="extras-replaced" checked={replacedId === c.guardId} onChange={() => setReplacedId(c.guardId)} />
+                      <span><b>{c.name}</b><small>{companyOfGuard?.(c.guardId) ?? ""}{c.baseShift && SHIFT_INFO[c.baseShift as Shift] ? ` · turno ${SHIFT_INFO[c.baseShift as Shift].label.toLowerCase()}` : ""} · {Array.from(new Set(c.absences.filter(x => selDates.includes(x.date)).map(x => x.label))).join(", ")}</small></span>
+                    </label>
+                  ))}</div>}
+            </div>
+
+            <div className="extras-block">
+              <h4><span className="step">2</span> Turno y horario</h4>
               <div className="extras-shifts">
                 {(Object.keys(SHIFT_INFO) as Shift[]).map(s => { const I = SHIFT_INFO[s].Icon; return <button key={s} type="button" className={shift === s ? "sel" : ""} disabled={!!lockedShift && lockedShift !== s} title={lockedShift && lockedShift !== s ? "El extra debe ser del turno del guardia ausente" : undefined} onClick={() => pickShift(s)}><I size={15} /> {SHIFT_INFO[s].label}</button>; })}
               </div>
@@ -161,28 +177,16 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
             </div>
 
             <div className="extras-block">
-              <h4>Empresa <small>{selected.size ? `${selected.size} día${selected.size === 1 ? "" : "s"} elegido${selected.size === 1 ? "" : "s"}` : "elige días en el calendario"}</small></h4>
+              <h4><span className="step">3</span> Empresa <small>{selected.size ? `${selected.size} día${selected.size === 1 ? "" : "s"} elegido${selected.size === 1 ? "" : "s"}` : "elige días en el calendario"}</small></h4>
+              {lockedCompanyId && <p className="extras-lock">Empresa del guardia ausente: <b>{companyName(lockedCompanyId)}</b>. El extra se hace en su puesto.</p>}
               <div className="extras-companies">
                 {activeCompanies.map(c => (
                   <label key={c.id} className={companyId === c.id ? "sel" : ""} style={{ ["--company-color" as any]: colorFor(c.id) }}>
-                    <input type="radio" name="extras-company" checked={companyId === c.id} onChange={() => setCompanyId(c.id)} />
+                    <input type="radio" name="extras-company" checked={companyId === c.id} disabled={!!lockedCompanyId && lockedCompanyId !== c.id} onChange={() => setCompanyId(c.id)} />
                     <Building2 size={14} /> <span>{c.name}</span>{countFor(c.id) > 0 && <em>{countFor(c.id)}</em>}
                   </label>
                 ))}
               </div>
-            </div>
-
-            <div className="extras-block">
-              <h4>Reemplaza a <small>(obligatorio · guardias ausentes en los días elegidos)</small></h4>
-              {!selDates.length ? <p className="extras-hint">Primero elige los días en el calendario.</p>
-                : absentQ.isLoading ? <p className="extras-hint">Buscando ausentes…</p>
-                : !candidates.length ? <p className="extras-warn">Nadie tiene ausencia registrada en {selDates.length === 1 ? "ese día" : "todos los días elegidos"}. Registra primero la ausencia en Control semanal, o elige días de una misma ausencia.</p>
-                : <div className="extras-replaced">{candidates.map(c => (
-                    <label key={c.guardId} className={replacedId === c.guardId ? "sel" : ""}>
-                      <input type="radio" name="extras-replaced" checked={replacedId === c.guardId} onChange={() => setReplacedId(c.guardId)} />
-                      <span><b>{c.name}</b><small>{companyOfGuard?.(c.guardId) ?? ""}{c.baseShift && SHIFT_INFO[c.baseShift as Shift] ? ` · turno ${SHIFT_INFO[c.baseShift as Shift].label.toLowerCase()}` : ""} · {Array.from(new Set(c.absences.filter(x => selDates.includes(x.date)).map(x => x.label))).join(", ")}</small></span>
-                    </label>
-                  ))}</div>}
             </div>
 
             <div className="extras-actions">
