@@ -82,6 +82,9 @@ administrador lo gestiona todo. Pendientes: feriados de Chile, planificación de
   `server/extraShifts.ts`, ventana `components/ExtrasModal.tsx` (botón «Extras» del Directorio). Bloquea días con
   ausencia propia y horarios superpuestos; **advierte** (pide confirmar) 24 h seguidas, <8 h de descanso o
   coincidencia con su turno habitual. Se ven en la tabla semanal (D/T/N con color de empresa), reportes, Excel y PDF.
+- Reporte «Ausencias y reemplazos» (3ª vista, `buildCoverage` en `ReportViews.tsx`): cruza cada ausencia con los extras
+  cuyo «Reemplaza a» es ese guardia ese día → Cubierta / Sin reemplazo, % de cobertura, filtro «Solo sin reemplazo»
+  y lista de «Reemplazos sin ausencia registrada». También hoja Excel y PDF.
 - Ausencias del día: cualquier causa registrada cuenta como 1 (decisión del usuario, incluido medio día).
 - Días administrativos: causa `A` (factor 0, permiso con goce de sueldo), 6 por guardia por **año calendario**
   (`server/adminDays.ts`). Si ya tiene uno ese mes se pide confirmación; al llegar a 6 se **bloquea**

@@ -1,8 +1,8 @@
-import { groupByCompany, usedCodes, SHIFT_LABEL, type ReportGuard, type ReportView, REPORT_VIEWS } from "@/components/ReportViews";
+import { groupByCompany, usedCodes, SHIFT_LABEL, type CoverageData, type ReportGuard, type ReportView, REPORT_VIEWS } from "@/components/ReportViews";
 
 export type ReportMeta = {
   supervisor: string; periodLabel: string; start: string; end: string; days: string[]; types: any[];
-  totals: { guards: number; absent: number; presentDays: number; weighted: number }; grouped: boolean;
+  totals: { guards: number; absent: number; presentDays: number; weighted: number }; grouped: boolean; coverage?: CoverageData;
 };
 
 const fileBase = (m: ReportMeta) => `guardiaflow-reporte-${m.start}-${m.end}`;
@@ -111,6 +111,24 @@ export async function exportExcel(rows: ReportGuard[], meta: ReportMeta) {
   if (!extItems.length) ext.addRow(["Sin días extra en el período."]);
   [12, 26, 14, 26, 9, 8, 7, 30, 26].forEach((w, i) => { ext.getColumn(i + 1).width = w; });
 
+  // Ausencias y reemplazos
+  if (meta.coverage) {
+    const cov = wb.addWorksheet("Ausencias y reemplazos", { views: [{ state: "frozen", ySplit: 6 }] });
+    const covCols = ["Fecha", "Guardia ausente", "RUT", "Empresa", "Punto", "Causa", "Estado", "Reemplazado por", "Turno", "Horario", "Empresa del reemplazo"];
+    titleBlock(cov, `Ausencias y reemplazos · ${meta.coverage.covered} de ${meta.coverage.total} cubiertas`, covCols.length);
+    header(cov, covCols);
+    for (const i of meta.coverage.items) {
+      const reps = i.replacements.length ? i.replacements : [null];
+      reps.forEach((r, k) => {
+        const row = cov.addRow([k ? "" : i.date, k ? "" : i.guard.name, k ? "" : i.guard.rut, k ? "" : i.guard.company, k ? "" : (i.guard.point ?? ""), k ? "" : `${i.code} · ${i.cause}`, r ? "Cubierta" : "Sin reemplazo", r?.name ?? "", r ? SHIFT_LABEL[r.shift] : "", r ? `${r.startTime} · ${r.hours} h` : "", r?.company ?? ""]);
+        if (!k) { row.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + hex(i.causeColor) } }; row.getCell(6).font = { bold: true, color: { argb: "FFFFFFFF" } }; }
+        row.getCell(7).font = { bold: true, color: { argb: r ? "FF147A5F" : "FFC0392B" } };
+      });
+    }
+    if (!meta.coverage.items.length) cov.addRow(["Sin ausencias en el período."]);
+    [12, 26, 14, 26, 18, 28, 14, 26, 9, 14, 28].forEach((w, i) => { cov.getColumn(i + 1).width = w; });
+  }
+
   const leg = wb.addWorksheet("Códigos");
   header(leg, ["Código", "Causa", "Factor de deducción"]);
   leg.addRow(["✓", "Presente", 0]);
@@ -138,6 +156,26 @@ export async function exportPdf(rows: ReportGuard[], meta: ReportMeta, view: Rep
     [{ content: `${company} · ${n} guardias · ${absent} ausencias · ${weighted.toFixed(2)} días ponderados`, colSpan: span, styles: { fillColor: [241, 245, 243] as [number, number, number], textColor: rgb(color), fontStyle: "bold" as const } }];
   const common = { startY: 76, theme: "grid" as const, headStyles: { fillColor: [14, 107, 91] as [number, number, number], textColor: 255, fontSize: 7, halign: "center" as const }, styles: { fontSize: 7, cellPadding: 2 }, margin: { left: 24, right: 24 } };
 
+  if (view === "coverage") {
+    const c = meta.coverage;
+    const items = c?.items ?? [];
+    doc.setFontSize(9); doc.setTextColor(14, 107, 91);
+    doc.text(`Ausencias: ${c?.total ?? 0} · Cubiertas: ${c?.covered ?? 0} · Sin reemplazo: ${(c?.total ?? 0) - (c?.covered ?? 0)}`, 32, 76);
+    const flat = items.flatMap(i => (i.replacements.length ? i.replacements : [null]).map((r, k) => ({ i, r, first: k === 0 })));
+    autoTable(doc, {
+      ...common, startY: 84,
+      head: [["Fecha", "Guardia ausente", "Empresa", "Causa", "Estado", "Reemplazado por", "Turno y horario", "Empresa del reemplazo"]],
+      body: flat.length ? flat.map(({ i, r, first }) => [first ? i.date : "", first ? i.guard.name : "", first ? i.guard.company + (i.guard.point ? ` · ${i.guard.point}` : "") : "", first ? `${i.code} · ${i.cause}` : "", r ? "Cubierta" : "Sin reemplazo", r?.name ?? "—", r ? `${SHIFT_LABEL[r.shift]} ${r.startTime} · ${r.hours} h` : "", r?.company ?? ""]) : [["Sin ausencias en el período.", "", "", "", "", "", "", ""]],
+      didParseCell: (data: any) => {
+        if (data.section !== "body" || !flat[data.row.index]) return;
+        const { i, r, first } = flat[data.row.index];
+        if (data.column.index === 3 && first) { data.cell.styles.fillColor = rgb(i.causeColor); data.cell.styles.textColor = 255; data.cell.styles.fontStyle = "bold"; }
+        if (data.column.index === 4) { data.cell.styles.textColor = r ? [20, 122, 95] : [192, 57, 43]; data.cell.styles.fontStyle = "bold"; }
+      },
+    });
+    doc.save(`${fileBase(meta)}.pdf`);
+    return;
+  }
   if (view === "combined") {
     // Resumen agrupado por empresa y, en una página nueva, el calendario de colores.
     await renderPdfTables(doc, autoTable, rows, { ...meta, grouped: true }, "summary", common, groupHead);

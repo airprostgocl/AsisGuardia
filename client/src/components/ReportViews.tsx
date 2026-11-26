@@ -18,12 +18,44 @@ export const SHIFT_LABEL: Record<string, string> = { dia: "Día", tarde: "Tarde"
 export function extrasSummary(list: ReportExtra[]) {
   return (["dia", "tarde", "noche"] as const).map(s => ({ s, n: list.filter(e => e.shift === s).length })).filter(x => x.n);
 }
-export type ReportView = "detail" | "combined" | "calendar" | "summary" | "absences";
+export type ReportView = "detail" | "combined" | "coverage" | "calendar" | "summary" | "absences";
 /** Dos formas de ver el informe: el detalle por fecha y el resumen por empresa + calendario de colores. */
 export const REPORT_VIEWS: { id: ReportView; label: string }[] = [
   { id: "detail", label: "Detalle por fecha" },
   { id: "combined", label: "Resumen y calendario" },
+  { id: "coverage", label: "Ausencias y reemplazos" },
 ];
+
+/* ---------- Ausencias y reemplazos ---------- */
+export type CoverageReplacement = { name: string; shift: "dia" | "tarde" | "noche"; startTime: string; hours: number; company: string; color: string };
+export type CoverageItem = { date: string; guard: { id: number; name: string; rut: string; company: string; point: string | null; color: string }; code: string; cause: string; causeColor: string; replacements: CoverageReplacement[] };
+export type CoverageData = { items: CoverageItem[]; orphans: { date: string; replacedName: string; replacement: CoverageReplacement }[]; covered: number; total: number };
+export type CoverageExtra = { date: string; replacedGuardId: number | null; replacerName: string; shift: "dia" | "tarde" | "noche"; startTime: string; hours: number; company: string; color: string };
+
+/** Cruza cada ausencia del período con los extras que indicaron reemplazar a ese guardia ese día. */
+export function buildCoverage(rows: ReportGuard[], extras: CoverageExtra[]): CoverageData {
+  const items: CoverageItem[] = [];
+  const used = new Set<CoverageExtra>();
+  for (const g of rows) {
+    for (const c of g.cells) {
+      if (c.present) continue;
+      const reps = extras.filter(e => e.replacedGuardId === g.id && e.date === c.date);
+      reps.forEach(e => used.add(e));
+      items.push({
+        date: c.date, guard: { id: g.id, name: g.name, rut: g.rut, company: g.company, point: g.point, color: g.color },
+        code: c.code, cause: c.name, causeColor: c.color,
+        replacements: reps.map(e => ({ name: e.replacerName, shift: e.shift, startTime: e.startTime, hours: e.hours, company: e.company, color: e.color })),
+      });
+    }
+  }
+  items.sort((a, b) => a.date.localeCompare(b.date) || a.guard.company.localeCompare(b.guard.company, "es") || a.guard.name.localeCompare(b.guard.name, "es"));
+  const inScope = new Map(rows.map(r => [r.id, r.name]));
+  const orphans = extras.filter(e => e.replacedGuardId && inScope.has(e.replacedGuardId) && !used.has(e))
+    .map(e => ({ date: e.date, replacedName: inScope.get(e.replacedGuardId!)!, replacement: { name: e.replacerName, shift: e.shift, startTime: e.startTime, hours: e.hours, company: e.company, color: e.color } }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const covered = items.filter(i => i.replacements.length).length;
+  return { items, orphans, covered, total: items.length };
+}
 
 export type ReportGroup = { company: string; color: string; rows: ReportGuard[]; absent: number; weighted: number; presentDays: number };
 
@@ -66,7 +98,8 @@ function withGroups(rows: ReportGuard[], grouped: boolean, colSpan: number, rend
   return groupByCompany(rows).flatMap(g => [<GroupHeader key={`h-${g.company}`} g={g} colSpan={colSpan} />, ...g.rows.map(renderRow)]);
 }
 
-export function ReportViewSwitch({ view, rows, days, types, grouped }: { view: ReportView; rows: ReportGuard[]; days: string[]; types: any[]; grouped: boolean }) {
+export function ReportViewSwitch({ view, rows, days, types, grouped, coverage }: { view: ReportView; rows: ReportGuard[]; days: string[]; types: any[]; grouped: boolean; coverage?: CoverageData }) {
+  if (view === "coverage") return <CoverageView data={coverage ?? { items: [], orphans: [], covered: 0, total: 0 }} />;
   if (!rows.length) return <p className="report-empty">No hay guardias para el filtro seleccionado.</p>;
 
   if (view === "combined") return <CompactReport rows={rows} days={days} types={types} />;
@@ -278,6 +311,52 @@ function DetailView({ rows, grouped }: { rows: ReportGuard[]; grouped: boolean }
           </tr>
         ))}
       </tbody></table>
+    </div>
+  );
+}
+
+const endAt = (start: string, hours: number) => { const [h, m] = start.split(":").map(Number); const t = (h * 60 + m + hours * 60) % 1440; return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" });
+
+/** Vista «Ausencias y reemplazos»: cada ausencia con su reemplazo (o «Sin reemplazo»). */
+function CoverageView({ data }: { data: CoverageData }) {
+  const { ref, height } = useFullScreenHeight();
+  const [onlyMissing, setOnlyMissing] = useState(false);
+  const list = onlyMissing ? data.items.filter(i => !i.replacements.length) : data.items;
+  const pct = data.total ? Math.round((data.covered / data.total) * 100) : 100;
+  return (
+    <div className="cov">
+      <div className="cov-head">
+        <span className="cov-stat"><b>{data.total}</b> ausencias</span>
+        <span className="cov-stat ok"><b>{data.covered}</b> cubiertas</span>
+        <span className="cov-stat bad"><b>{data.total - data.covered}</b> sin reemplazo</span>
+        <span className="cov-stat"><b>{pct}%</b> de cobertura</span>
+        <label className="cov-filter"><input type="checkbox" checked={onlyMissing} onChange={e => setOnlyMissing(e.target.checked)} /> Solo sin reemplazo</label>
+      </div>
+      <div className="report-table-wrap report-fullscreen" ref={ref} style={height ? { height } : undefined}>
+        {!list.length ? <p className="report-empty">{data.total ? "Todas las ausencias del período tienen reemplazo." : "No hay ausencias en el período."}</p> : (
+          <table className="report-table cov-table"><thead><tr><th>Fecha</th><th>Guardia ausente</th><th>Causa</th><th>Reemplazado por</th><th>Estado</th></tr></thead><tbody>
+            {list.map(i => (
+              <tr key={`${i.guard.id}-${i.date}`}>
+                <td className="cov-date">{fmtDate(i.date)}</td>
+                <td className="company-bar" style={{ ["--company-color" as any]: i.guard.color }}><b>{i.guard.name}</b><small><strong>{i.guard.company}</strong>{i.guard.point ? ` · ${i.guard.point}` : ""}</small></td>
+                <td><span className="report-day event" style={{ background: i.causeColor, color: "#fff" }}>{i.code} · {i.cause}</span></td>
+                <td>{i.replacements.length ? i.replacements.map((r, k) => (
+                  <div key={k} className="cov-rep"><b>{r.name}</b><small><i style={{ background: r.color }}>{SHIFT_SHORT[r.shift]}</i> {SHIFT_LABEL[r.shift]} {r.startTime}–{endAt(r.startTime, r.hours)} · {r.company}</small></div>
+                )) : <span className="cov-none">—</span>}</td>
+                <td>{i.replacements.length ? <span className="cov-badge ok">Cubierta</span> : <span className="cov-badge bad">Sin reemplazo</span>}</td>
+              </tr>
+            ))}
+          </tbody></table>
+        )}
+        {data.orphans.length > 0 && !onlyMissing && (
+          <div className="cov-orphans">
+            <h4>Reemplazos sin ausencia registrada ({data.orphans.length})</h4>
+            <p>Extras que indican reemplazar a un guardia que ese día no tiene ausencia marcada. Revisa si falta registrar la ausencia.</p>
+            {data.orphans.map((o, k) => <div key={k} className="cov-rep"><b>{fmtDate(o.date)} · {o.replacement.name}</b><small>reemplaza a {o.replacedName} · {SHIFT_LABEL[o.replacement.shift]} {o.replacement.startTime} · {o.replacement.company}</small></div>)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

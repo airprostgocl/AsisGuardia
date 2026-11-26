@@ -497,3 +497,25 @@ button.side-note b{font-size:13px}
 .cr-extra{display:inline-flex;align-items:center;gap:3px;border:1.5px solid;border-radius:99px;padding:0 6px 0 0;font-size:10px;font-weight:700;color:#34473f;background:#fff}
 .cr-extra i{font-style:normal;color:#fff;border-radius:99px;padding:0 5px;line-height:16px;font-size:9px}
 .cr-none-muted{color:#a3b0ab}
+/* Ausencias y reemplazos */
+.cov-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:10px 2px 8px;font-size:12px;color:#5f716a}
+.cov-stat b{font-size:16px;color:#17362e;margin-right:3px}
+.cov-stat.ok b{color:#147a5f}
+.cov-stat.bad b{color:#c0392b}
+.cov-filter{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#34473f;cursor:pointer}
+.cov-filter input{accent-color:#0e6b5b;width:15px;height:15px}
+.cov-table thead th{position:sticky;top:0;z-index:3;background:#0e6b5b;color:#fff;padding:9px 10px;text-align:left;font-size:11px}
+.cov-table td{padding:7px 10px;vertical-align:middle;font-size:12px}
+.cov-date{white-space:nowrap;font-weight:700;color:#17362e}
+.cov-rep{display:grid;gap:1px;margin:2px 0}
+.cov-rep b{font-size:12px;color:#17362e}
+.cov-rep small{font-size:10px;color:#5f716a;display:flex;align-items:center;gap:4px}
+.cov-rep small i{font-style:normal;color:#fff;border-radius:4px;padding:0 4px;font-size:9px;font-weight:800}
+.cov-none{color:#a3b0ab}
+.cov-badge{display:inline-block;border-radius:99px;padding:3px 9px;font-size:10px;font-weight:800;color:#fff;white-space:nowrap}
+.cov-badge.ok{background:#147a5f}
+.cov-badge.bad{background:#c0392b}
+.cov-orphans{margin:14px 12px;padding:10px 12px;border:1px dashed #e0b35a;border-radius:10px;background:#fffaf0}
+.cov-orphans h4{margin:0 0 4px;font-size:12px;color:#7a5206}
+.cov-orphans p{margin:0 0 8px;font-size:11px;color:#7a6a4a}
+@media(max-width:720px){.cov-filter{margin-left:0}}
