@@ -30,13 +30,18 @@ type Props = {
   guards: { id: number; name: string; baseShift?: string | null; shiftStart?: string | null; shiftEnd?: string | null }[];
   companyOfGuard?: (guardId: number) => string;
   companyIdOfGuard?: (guardId: number) => number | null;
+  /** Guardias que se pueden elegir para asignar extras (por defecto, todos). */
+  selectableGuards?: { id: number; name: string; baseShift?: string | null }[];
   colorFor: (companyId: number) => string;
   initialMonth: Date;
   onClose: () => void;
 };
 
 /** Ventana para asignar días extra (reemplazos) de un guardia a una o varias empresas, por turno. */
-export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, onClose, companyOfGuard, companyIdOfGuard }: Props) {
+export function ExtrasModal({ guard: initialGuard, companies, guards, colorFor, initialMonth, onClose, companyOfGuard, companyIdOfGuard, selectableGuards }: Props) {
+  const [guard, setGuard] = useState(initialGuard);
+  const [guardQuery, setGuardQuery] = useState<string | null>(null); // null = mostrando el nombre actual
+  const pickable = (selectableGuards ?? guards).filter(g => startsWith(g.name, guardQuery ?? ""));
   const utils = trpc.useUtils();
   const [month, setMonth] = useState(() => new Date(initialMonth.getFullYear(), initialMonth.getMonth(), 1));
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -62,6 +67,10 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
 
   useEffect(() => { const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; document.addEventListener("keydown", onKey); return () => document.removeEventListener("keydown", onKey); }, [onClose]);
 
+  const switchGuard = (g: { id: number; name: string; baseShift?: string | null }) => {
+    setGuard(g); setGuardQuery(null); setSelected(new Set()); setReplacedId(null); setPersonSearch("");
+    (document.activeElement as HTMLElement | null)?.blur();
+  };
   const pickShift = (s: Shift) => { setShift(s); setStartTime(SHIFT_INFO[s].start); setHours(SHIFT_INFO[s].hours); };
   const refresh = async () => { await Promise.all([utils.extras.forGuard.invalidate(), utils.extras.list.invalidate()]); };
 
@@ -138,7 +147,27 @@ export function ExtrasModal({ guard, companies, guards, colorFor, initialMonth, 
     <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal extras-modal" role="dialog" aria-label={`Días extra de ${guard.name}`}>
         <div className="modal-head">
-          <div><p className="eyebrow teal">DÍAS EXTRA · REEMPLAZOS</p><h3>{guard.name}</h3></div>
+          <div className="extras-guard-pick">
+            <p className="eyebrow teal">DÍAS EXTRA · REEMPLAZOS</p>
+            <div className="guard-combo">
+              <input className="guard-combo-input" value={guardQuery ?? guard.name} placeholder="Buscar guardia…" aria-label="Guardia al que se asignan extras"
+                onFocus={e => { setGuardQuery(""); e.currentTarget.select(); }}
+                onChange={e => setGuardQuery(e.target.value)}
+                onBlur={() => setTimeout(() => setGuardQuery(null), 150)}
+                onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); setGuardQuery(null); (e.target as HTMLInputElement).blur(); } if (e.key === "Enter" && pickable[0]) switchGuard(pickable[0]); }} />
+              {guardQuery !== null && (
+                <div className="guard-combo-list" role="listbox">
+                  {pickable.slice(0, 60).map(g => (
+                    <button key={g.id} type="button" role="option" aria-selected={g.id === guard.id} className={g.id === guard.id ? "sel" : ""} onMouseDown={e => { e.preventDefault(); switchGuard(g); }}>
+                      <i style={{ background: colorFor(companyIdOfGuard?.(g.id) ?? 0) }} /> <b>{g.name}</b> <small>{companyOfGuard?.(g.id) ?? ""}</small>
+                    </button>
+                  ))}
+                  {!pickable.length && <p className="extras-hint">Ningún guardia empieza por «{guardQuery}».</p>}
+                </div>
+              )}
+            </div>
+            <small className="guard-combo-hint">Haz clic en el nombre para cambiar de guardia.</small>
+          </div>
           <button onClick={onClose} aria-label="Cerrar"><X size={19} /></button>
         </div>
         <div className="extras-layout">

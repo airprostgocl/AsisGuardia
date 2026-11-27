@@ -5,7 +5,7 @@ import { protectedProcedure, publicProcedure, router, supervisorAdminProcedure }
 import { clientIp, rateLimit } from "./_core/rateLimit";
 import { localSessionCookie, createLocalSession } from "./_core/localAuth";
 import { archiveSite, authenticateSupervisor, clearDemoData, createGuard, createSite, deleteGuard, deleteSite, getOperationalSnapshot, setSiteAssignment, updateGuard } from "./db";
-import { adminCreateSupervisor, adminResetSupervisorPassword, adminSetSupervisorActive, adminUpdateSupervisor, changeOwnPassword, listSupervisors, MIN_PASSWORD_LENGTH, publicSupervisor, requestPasswordReset, resetPasswordWithToken, updateOwnProfile } from "./supervisorAccounts";
+import { sendSupervisorInvite, adminCreateSupervisor, adminResetSupervisorPassword, adminSetSupervisorActive, adminUpdateSupervisor, changeOwnPassword, listSupervisors, MIN_PASSWORD_LENGTH, publicSupervisor, requestPasswordReset, resetPasswordWithToken, updateOwnProfile } from "./supervisorAccounts";
 import { z } from "zod";
 import { absentGuards, assignExtras, BASE_SHIFTS, guardExtrasContext, listExtras, removeExtras, SHIFTS } from "./extraShifts";
 import { adminDayCheck, adminDaysSummary, assertAdminDayAllowed } from "./adminDays";
@@ -71,7 +71,8 @@ export const appRouter = router({
   }),
   supervisors: router({
     list: supervisorAdminProcedure.query(() => listSupervisors()),
-    create: supervisorAdminProcedure.input(z.object({ name:z.string().min(2), username:z.string().min(2), email:emailInput, temporaryPassword:z.string().min(MIN_PASSWORD_LENGTH) })).mutation(({ input }) => adminCreateSupervisor(input)),
+    create: supervisorAdminProcedure.input(z.object({ name:z.string().min(2), username:z.string().min(2), email:emailInput, temporaryPassword:z.string().min(MIN_PASSWORD_LENGTH).optional().or(z.literal("")) })).mutation(({ input, ctx }) => adminCreateSupervisor(input, input.temporaryPassword ? undefined : appUrl(ctx.req))),
+    sendInvite: supervisorAdminProcedure.input(z.object({ id:z.number() })).mutation(({ input, ctx }) => sendSupervisorInvite(input.id, appUrl(ctx.req))),
     update: supervisorAdminProcedure.input(z.object({ id:z.number(), name:z.string().min(2), username:z.string().min(2), email:emailInput })).mutation(({ input }) => adminUpdateSupervisor(input.id, input)),
     setActive: supervisorAdminProcedure.input(z.object({ id:z.number(), active:z.boolean() })).mutation(({ input, ctx }) => adminSetSupervisorActive(ctx.supervisor.id, input.id, input.active)),
     markAuthors: supervisorAdminProcedure.input(z.object({ start:z.string(), end:z.string() })).query(({ input }) => listMarkAuthors(input.start, input.end)),

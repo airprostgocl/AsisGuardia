@@ -3,7 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { passwordResetTokens, supervisors, type Supervisor } from "../drizzle/schema";
 import { getDb } from "./db";
 import { hashPassword, verifyPassword } from "./_core/localAuth";
-import { sendPasswordResetEmail } from "./mailer";
+import { sendPasswordResetEmail, sendWelcomeEmail } from "./mailer";
 
 export const MIN_PASSWORD_LENGTH = 8;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -89,21 +89,54 @@ export async function listSupervisors() {
   return rows.map(publicSupervisor);
 }
 
-export async function adminCreateSupervisor(input: { name: string; username: string; email?: string | null; temporaryPassword: string }) {
+/**
+ * Crea un supervisor. Con contraseña temporal: debe cambiarla al primer ingreso.
+ * Sin contraseña (requiere correo): se le envía un correo de bienvenida con un enlace para crearla.
+ */
+export async function adminCreateSupervisor(input: { name: string; username: string; email?: string | null; temporaryPassword?: string | null }, appUrl?: string) {
   const db = await requireDb();
-  assertPassword(input.temporaryPassword);
+  const email = normalizeEmail(input.email);
+  const temp = input.temporaryPassword?.trim() ? input.temporaryPassword : null;
+  if (temp) assertPassword(temp);
+  else if (!email) throw new Error("Indica una contraseña temporal o un correo para enviarle la invitación");
   const inserted = await friendlyUnique(() =>
     db.insert(supervisors).values({
       name: input.name.trim(),
       username: normalizeUsername(input.username),
-      email: normalizeEmail(input.email),
-      passwordHash: hashPassword(input.temporaryPassword),
-      mustChangePassword: true,
+      email,
+      // Sin contraseña temporal se guarda una contraseña aleatoria que nadie conoce: la creará con el enlace.
+      passwordHash: hashPassword(temp ?? crypto.randomBytes(24).toString("base64url")),
+      mustChangePassword: Boolean(temp),
       isAdmin: false,
       active: true,
     }).returning(),
   );
-  return publicSupervisor(inserted[0]);
+  const created = inserted[0];
+  const invite = !temp && appUrl ? await sendSupervisorInvite(created.id, appUrl) : null;
+  return { ...publicSupervisor(created), invite };
+}
+
+const INVITE_TOKEN_TTL_MS = 72 * 60 * 60 * 1000;
+
+/** Envía (o reenvía) el correo de bienvenida con un enlace de un solo uso para crear la contraseña (72 h). */
+export async function sendSupervisorInvite(id: number, appUrl: string) {
+  const db = await requireDb();
+  const supervisor = await getById(id);
+  if (!supervisor.email) throw new Error("Este supervisor no tiene correo registrado");
+  if (!supervisor.active) throw new Error("La cuenta está desactivada");
+  await db.update(passwordResetTokens).set({ usedAt: new Date() })
+    .where(and(eq(passwordResetTokens.supervisorId, id), isNull(passwordResetTokens.usedAt)));
+  const token = crypto.randomBytes(32).toString("base64url");
+  await db.insert(passwordResetTokens).values({ supervisorId: id, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + INVITE_TOKEN_TTL_MS) });
+  const base = appUrl.replace(/\/$/, "");
+  const link = `${base}/restablecer?token=${encodeURIComponent(token)}&bienvenida=1`;
+  try {
+    const sent = await sendWelcomeEmail(supervisor.email, supervisor.name, supervisor.username, link, base);
+    return sent ? { sent: true as const, email: supervisor.email } : { sent: false as const, email: supervisor.email, reason: "El envío de correos no está configurado en el servidor (SMTP)" };
+  } catch (error) {
+    console.error("[Mail] Error al enviar la invitación:", (error as Error).message);
+    return { sent: false as const, email: supervisor.email, reason: "No se pudo enviar el correo" };
+  }
 }
 
 export async function adminUpdateSupervisor(id: number, input: { name: string; username: string; email?: string | null }) {

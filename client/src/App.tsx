@@ -26,7 +26,7 @@ function AuthGate(){
   const [location,navigate]=useLocation(); const search=useSearch();
   const me=trpc.auth.me.useQuery(undefined,{enabled:location!=="/restablecer"});
   // El enlace del correo de recuperación funciona con o sin sesión iniciada.
-  if(location==="/restablecer")return <ResetPasswordScreen token={new URLSearchParams(search).get("token")||""} onDone={()=>navigate("/",{replace:true})}/>;
+  if(location==="/restablecer")return <ResetPasswordScreen welcome={new URLSearchParams(search).get("bienvenida")==="1"} token={new URLSearchParams(search).get("token")||""} onDone={()=>navigate("/",{replace:true})}/>;
   if(me.isLoading)return <main className="login-shell"><div className="login-loading">Verificando sesión…</div></main>;
   if(!me.data?.authenticated)return <LoginScreen/>;
   if(me.data.supervisor?.mustChangePassword)return <ForceChangePasswordScreen name={me.data.supervisor.name}/>;

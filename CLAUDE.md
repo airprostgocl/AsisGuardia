@@ -50,6 +50,9 @@ administrador lo gestiona todo. Pendientes: feriados de Chile, unir a `main`, re
 - Lógica de cuentas: `server/supervisorAccounts.ts`; permisos en `server/_core/trpc.ts`
   (`supervisorAdminProcedure`, bloqueo por contraseña temporal pendiente).
 - Las sesiones están ligadas a la huella de la contraseña: cambiarla invalida las sesiones anteriores.
+- Alta de supervisor: con correo y sin contraseña temporal se envía **correo de bienvenida** con enlace (72 h, un solo
+  uso) a `/restablecer?token=…&bienvenida=1` (`sendSupervisorInvite`); botón «Enviar invitación» para reenviar.
+  Sin correo, contraseña temporal obligatoria (cambio forzado al primer ingreso).
 - Nunca enviar `passwordHash` al navegador (usar `publicSupervisor`).
 - Colores de causas: la UI usa la paleta de categorías (`causeCategory` en `Home.tsx`), no los colores
   de `absence_types` en la base de datos, para que coincidan con la leyenda.
@@ -78,7 +81,8 @@ administrador lo gestiona todo. Pendientes: feriados de Chile, unir a `main`, re
   el `::before` en un `tr` crea una columna fantasma y desalinea las columnas.
 - Turnos: Día, Tarde y Noche (sin Rotativo). Cada guardia tiene `baseShift` + horario `shiftStart`/`shiftEnd` en su ficha
   (por defecto Día 08–20, Tarde 14–22, Noche 20–08; editable, con parpadeo). No hay campo «Puesto» (todos «Guardia»).
-  La ventana de Extras carga el turno y horario exacto del ausente.
+  La ventana de Extras carga el turno y horario exacto del ausente. En el título de la ventana se puede cambiar de guardia
+  (buscador por letra inicial) sin volver al Directorio.
   Una noche que cruza medianoche pertenece a la **fecha en que empieza**.
 - Días extra (reemplazos): tabla `extra_shifts` (guardia, fecha, turno, inicio, horas, empresa, reemplaza a),
   `server/extraShifts.ts`, ventana `components/ExtrasModal.tsx` (botón «Extras» del Directorio). Bloquea días con

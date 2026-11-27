@@ -54,8 +54,12 @@ export function SupervisorAdminCard({ currentId }: { currentId: number }) {
   const [form, setForm] = useState({ name: "", username: "", email: "", temporaryPassword: "" });
   const [editing, setEditing] = useState<{ id: number; name: string; username: string; email: string } | null>(null);
 
+  const invite = trpc.supervisors.sendInvite.useMutation({
+    onSuccess: r => r.sent ? toast.success("Invitación enviada", { description: `Correo enviado a ${r.email} con un enlace para crear su contraseña (válido 72 h).` }) : toast.error("No se pudo enviar la invitación", { description: r.reason }),
+    onError: e => toast.error(e.message),
+  });
   const create = trpc.supervisors.create.useMutation({
-    onSuccess: async x => { toast.success("Supervisor creado", { description: `Entrega a ${x.name} su usuario «${x.username}» y la contraseña temporal. Deberá cambiarla al ingresar.` }); setForm({ name: "", username: "", email: "", temporaryPassword: "" }); await refresh(); },
+    onSuccess: async x => { if (!x.invite) toast.success("Supervisor creado", { description: `Entrega a ${x.name} su usuario «${x.username}» y la contraseña temporal. Deberá cambiarla al ingresar.` }); else if (x.invite.sent) toast.success("Supervisor creado e invitado", { description: `Se envió a ${x.invite.email} un correo con su usuario «${x.username}» y un enlace para crear su contraseña (válido 72 h).` }); else toast.error("Supervisor creado, pero no se pudo enviar la invitación", { description: `${x.invite.reason}. Usa «Enviar invitación» más tarde o «Restablecer contraseña» con una temporal.`, duration: 12000 }); setForm({ name: "", username: "", email: "", temporaryPassword: "" }); await refresh(); },
     onError: e => toast.error(e.message),
   });
   const update = trpc.supervisors.update.useMutation({ onSuccess: async () => { toast.success("Supervisor actualizado"); setEditing(null); await refresh(); }, onError: e => toast.error(e.message) });
@@ -73,19 +77,20 @@ export function SupervisorAdminCard({ currentId }: { currentId: number }) {
     setActive.mutate({ id: s.id, active: !s.active });
   };
 
-  const valid = form.name.trim().length >= 2 && form.username.trim().length >= 2 && form.temporaryPassword.length >= MIN;
+  const hasEmail = /\S+@\S+\.\S+/.test(form.email.trim());
+  const valid = form.name.trim().length >= 2 && form.username.trim().length >= 2 && (form.temporaryPassword.length >= MIN || (hasEmail && !form.temporaryPassword));
 
   return (
     <div className="admin-card supervisor-admin-card">
       <h3>Administrar supervisores</h3>
-      <p className="admin-help">Solo tú, como administrador, ves esta sección. Las contraseñas no se muestran nunca: puedes asignar una temporal y el supervisor la cambiará en su primer ingreso.</p>
+      <p className="admin-help">Solo tú, como administrador, ves esta sección. Las contraseñas no se muestran nunca. Si indicas su correo y dejas la contraseña temporal vacía, recibirá un correo de bienvenida para crearla; si no, asígnale una temporal y la cambiará en su primer ingreso.</p>
       <div className="form-grid">
         <label>Nombre completo<input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ej. Juan Pérez" /></label>
         <label>Usuario<input value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} placeholder="Ej. jperez" /></label>
         <label>Correo <span className="optional-label">(opcional · para recuperar la contraseña)</span><input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="nombre@correo.cl" /></label>
-        <label>Contraseña temporal<input type="text" autoComplete="off" value={form.temporaryPassword} onChange={e => setForm({ ...form, temporaryPassword: e.target.value })} placeholder={`Mín. ${MIN} caracteres`} /></label>
+        <label>Contraseña temporal<input type="text" autoComplete="off" value={form.temporaryPassword} onChange={e => setForm({ ...form, temporaryPassword: e.target.value })} placeholder={hasEmail ? "Vacía = se envía invitación por correo" : `Mín. ${MIN} caracteres`} /></label>
       </div>
-      <button className="primary" disabled={create.isPending || !valid} onClick={() => create.mutate({ name: form.name.trim(), username: form.username.trim(), email: form.email.trim() || null, temporaryPassword: form.temporaryPassword })}><UserPlus size={15} /> {create.isPending ? "Creando…" : "Crear supervisor"}</button>
+      <button className="primary" disabled={create.isPending || !valid} onClick={() => create.mutate({ name: form.name.trim(), username: form.username.trim(), email: form.email.trim() || null, temporaryPassword: form.temporaryPassword || undefined })}><UserPlus size={15} /> {create.isPending ? "Creando…" : "Crear supervisor"}</button>
 
       <div className="site-list supervisor-list">
         {list.isLoading && <small>Cargando supervisores…</small>}
@@ -110,6 +115,7 @@ export function SupervisorAdminCard({ currentId }: { currentId: number }) {
             </div>
             <div>
               <button className="outline" onClick={() => setEditing({ id: s.id, name: s.name, username: s.username, email: s.email || "" })}>Editar</button>
+              {!s.isAdmin && s.email && s.active && <button className="outline" disabled={invite.isPending} onClick={() => invite.mutate({ id: s.id })} title="Envía un correo con un enlace para crear su contraseña (72 h)">Enviar invitación</button>}
               {!s.isAdmin && <button className="outline" onClick={() => askReset(s)}>Restablecer contraseña</button>}
               {!s.isAdmin && <button className={s.active ? "danger-button" : "outline"} onClick={() => toggleActive(s)}>{s.active ? "Desactivar" : "Reactivar"}</button>}
             </div>

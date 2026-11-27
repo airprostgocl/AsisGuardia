@@ -49,7 +49,7 @@ export function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-export function ResetPasswordScreen({ token, onDone }: { token: string; onDone: () => void }) {
+export function ResetPasswordScreen({ token, onDone, welcome = false }: { token: string; onDone: () => void; welcome?: boolean }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const reset = trpc.auth.resetPassword.useMutation();
@@ -59,13 +59,13 @@ export function ResetPasswordScreen({ token, onDone }: { token: string; onDone: 
   }
   if (reset.isSuccess) {
     return (
-      <Shell eyebrow="RECUPERAR ACCESO" title="Contraseña actualizada" copy={`Ya puedes ingresar con tu usuario «${reset.data.username}» y tu nueva contraseña.`}>
+      <Shell eyebrow={welcome ? "BIENVENIDO A GUARDIAFLOW" : "RECUPERAR ACCESO"} title={welcome ? "Contraseña creada" : "Contraseña actualizada"} copy={`Ya puedes ingresar con tu usuario «${reset.data.username}» y tu ${welcome ? "" : "nueva "}contraseña.`}>
         <button className="primary login-button" onClick={onDone}>Ir al ingreso</button>
       </Shell>
     );
   }
   return (
-    <Shell eyebrow="RECUPERAR ACCESO" title="Crea una nueva contraseña" copy={`Elige una contraseña de al menos ${MIN} caracteres.`}>
+    <Shell eyebrow={welcome ? "BIENVENIDO A GUARDIAFLOW" : "RECUPERAR ACCESO"} title={welcome ? "Crea tu contraseña" : "Crea una nueva contraseña"} copy={welcome ? `Tu cuenta de supervisor está lista. Elige una contraseña de al menos ${MIN} caracteres para ingresar.` : `Elige una contraseña de al menos ${MIN} caracteres.`}>
       <form onSubmit={e => { e.preventDefault(); reset.mutate({ token, newPassword: password }); }}>
         <label>Nueva contraseña<input type="password" autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} /></label>
         <label>Repite la nueva contraseña<input type="password" autoComplete="new-password" value={confirm} onChange={e => setConfirm(e.target.value)} /></label>

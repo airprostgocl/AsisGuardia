@@ -559,3 +559,16 @@ button.side-note b{font-size:13px}
 .search input{padding-right:24px}
 .search-clear{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:99px;display:grid;place-items:center;border:0;background:#e3ebe7;color:#34473f;cursor:pointer}
 .search-clear:hover{background:#0e6b5b;color:#fff}
+/* Ventana de Extras: cambiar de guardia desde el título */
+.extras-guard-pick{position:relative;min-width:0;flex:1}
+.guard-combo{position:relative;max-width:460px}
+.guard-combo-input{width:100%;font-size:21px;font-weight:600;color:#17362e;border:1px solid transparent;border-radius:9px;padding:3px 8px;margin-left:-8px;background:transparent;font-family:inherit;cursor:pointer}
+.guard-combo-input:hover{border-color:#cfe0d9;background:#f6faf8}
+.guard-combo-input:focus{outline:0;border-color:#8dcab9;box-shadow:0 0 0 3px #dff4ec;background:#fff;cursor:text;font-size:16px}
+.guard-combo-list{position:absolute;z-index:10;top:calc(100% + 4px);left:-8px;right:0;max-height:300px;overflow:auto;background:#fff;border:1px solid #dce6e1;border-radius:11px;box-shadow:0 12px 30px rgba(16,44,40,.18);padding:5px}
+.guard-combo-list button{width:100%;display:flex;align-items:center;gap:7px;text-align:left;border:0;background:none;padding:7px 8px;border-radius:8px;cursor:pointer;font-family:inherit}
+.guard-combo-list button:hover,.guard-combo-list button.sel{background:#eef7f3}
+.guard-combo-list i{width:4px;height:18px;border-radius:3px;flex:none}
+.guard-combo-list b{font-size:13px;color:#17362e}
+.guard-combo-list small{font-size:11px;color:#6b7c76;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.guard-combo-hint{display:block;font-size:10px;color:#7d8d87;margin-top:2px}
