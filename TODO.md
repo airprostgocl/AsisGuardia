@@ -50,3 +50,20 @@ supervisores, empresas y guardias desde el panel de administración.
 - [ ] Contrato de servicio y de tratamiento de datos personales (Ley 21.719).
 - Estrategia comercial sugerida: piloto pagado de 2–3 meses con 100–200 guardias (5–8 UF/mes), luego contrato
   anual (~18 UF/mes + implementación 25–40 UF, más IVA).
+
+### Venta a varias empresas (control para el cliente)
+- [ ] **Panel «Configuración» del administrador** (dentro de la app):
+  - [ ] Datos de la empresa: nombre, logo y colores (marca propia).
+  - [ ] Correo de envío (cuenta + contraseña de aplicación) guardado **cifrado** en la base de datos, con
+        «Enviar correo de prueba» (hoy está en el `.env`: `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`).
+  - [ ] Catálogo de causas editable (nombre, código, color, **factor de deducción**). Hoy está fijo en el código
+        y `ensureOperationalSeed` lo restablece en cada carga: hay que dejar de sobrescribirlo.
+  - [ ] Reglas: días administrativos por año (hoy 6 fijo), horarios por defecto de los turnos, feriados.
+- [ ] **Varios administradores** y roles (administrador, supervisor, solo lectura para gerencia).
+- [ ] **Dominio propio** por cliente (ej. `guardias.empresacliente.cl`).
+- Modelos de venta:
+  - **A. Una instalación por empresa en el VPS** (recomendado para empezar): contenedor, base de datos y dominio propios.
+  - **B. Instalación en la infraestructura del cliente** (su VPS y su Supabase): licencia + instalación + actualizaciones.
+  - **C. Plataforma multiempresa única**: solo cuando haya muchos clientes (requiere adaptar todo el sistema).
+- Migrar Supabase a la empresa: **transferir el proyecto** a su organización de Supabase, o crear un proyecto nuevo,
+  `db:migrate` + copiar datos con `pg_dump`/`pg_restore`, cambiar `SUPABASE_POOLER_DATABASE_URL` y recrear el contenedor.
